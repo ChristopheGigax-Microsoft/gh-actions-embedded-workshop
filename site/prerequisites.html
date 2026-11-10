@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Customer preflight | From Commit to Firmware</title><link rel="stylesheet" href="assets/styles.css"></head>
+<body><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="index.html#journey">Labs</a><a href="troubleshooting.html">Troubleshooting</a><a href="instructor.html">Facilitator</a></nav></div></header>
+<main id="main"><p class="eyebrow">Before the workshop</p><h1>Bring your project, not a new platform.</h1>
+<p class="lead">The workshop starts with code already in your customer's GitHub repository and a working customer development environment. Resolve these prerequisites before the session.</p>
+<h2>Access and safety agreement</h2>
+<ul><li>Permission to create an approved workshop branch/PR and edit workflow files in the existing repository.</li><li>Actions enabled, an approved runner, and an allowed-actions list compatible with the reviewed examples.</li><li>Compiler/SDK access, required licenses, dependency/network access, and a runner OS that can build the real target.</li><li>Approval for the <strong>required test-only intentional failure</strong>: one editable deterministic test, a temporary incorrect expected value, and an isolated red CI run.</li><li>Review existing push, PR, tag, release, and downstream deployment triggers. Agree a workshop namespace that cannot publish production firmware or flash a device.</li><li>Agree where diagnostic reports and binaries can be retained. Do not copy customer source or reports into the public workshop repository.</li><li>For the release lab, permission to create an approved workshop tag and GitHub prerelease. If customer policy forbids publication, record the limitation before the session and demonstrate packaging without claiming release completion.</li></ul>
+<h2>Fill in the adaptation map</h2>
+<div class="table-wrap"><table><thead><tr><th>Integration point</th><th>Reference</th><th>Record for your project</th></tr></thead><tbody>
+<tr><td>Source/build entry</td><td><code>path/to/your/project</code> placeholder and reference CMake presets</td><td>Your repository-relative source directory and existing configure/build commands</td></tr>
+<tr><td>Host tests</td><td>CTest/native compiler</td><td>Executable test command, deterministic test, report path</td></tr>
+<tr><td>Target toolchain</td><td>Arm GNU/Cortex-M3</td><td>Compiler/version, target/ABI, SDK, startup, linker map</td></tr>
+<tr><td>Runner</td><td>Hosted Ubuntu reference</td><td>Approved labels/OS, network and licensing constraints</td></tr>
+<tr><td>Outputs</td><td>ELF/BIN/map</td><td>Actual target files and packaging location</td></tr>
+<tr><td>Optional gates</td><td>GCC/cppcheck/gcovr/size</td><td>Selected modules, supported tools, agreed thresholds</td></tr>
+<tr><td>Optional SBOM</td><td>Scoped SPDX inventory</td><td>Approved generator and component inventory scope</td></tr>
+<tr><td>Delivery</td><td>Workshop-only version tags</td><td>Non-production namespace and release policy</td></tr>
+</tbody></table></div>
+<aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. Use <code>.</code> for a root-level project in commands and <code>**</code> for its workflow source path filter. Also adapt include/source subdirectories, presets and output paths.</p></aside>
+<aside class="callout" data-toolchain><strong>Adapt to your target project.</strong><p>CMake is a build-system reference, not a universal toolchain. Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner, and paths for your actual target. Host tests use a host compiler. Do not migrate build systems just to follow this workshop.</p></aside>
+<h2>Evidence to bring</h2>
+<p>Run a clean build and the chosen tests in your current environment. Record tool versions and the output locations. A native test runner must not attempt to execute a device ELF directly. Missing testability or noninteractive build access is a preflight gap, not something to hide with a passing placeholder job.</p>
+<h2>Optional modules are not prerequisites</h2>
+<p>Quality gates and SBOM generation are independently optional. You need their tools only if you choose them. Existing customer-required checks must remain required. No physical board, paid environment approvals, Codespaces, or external code-upload service is required for the core.</p>
+<div class="checkpoint"><strong>Ready to start?</strong><p>You have a baseline passing build/test, the adaptation map, approved runner access, the test-only exercise agreement, and safe branch/tag boundaries.</p></div>
+<div class="pager"><a href="index.html">Home</a><a href="labs/01-local-build.html">Next: repeatable build &rarr;</a></div>
+</main><footer>Preflight happens before the core workshop. Keep customer evidence in approved customer systems.</footer></body></html>

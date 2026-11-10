@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>05 Optional quality gates | From Commit to Firmware</title><link rel="stylesheet" href="../assets/styles.css"><script src="../assets/workshop.js" defer></script></head>
+<body data-lab="05-optional"><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="../index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="../index.html#journey">All labs</a><a href="06-sbom-optional.html">Optional SBOM</a><a href="../troubleshooting.html">Troubleshooting</a></nav></div></header>
+<main id="main"><p class="eyebrow">05 / Optional / Before release</p><h1>Add useful quality gates.</h1>
+<p class="lead">Choose this module only when its tools and thresholds fit your customer project. Builds and tests remain required whether or not you take this module.</p>
+<h2>Purpose</h2><p>Add meaningful, measurable checks before firmware delivery. Select only tools and thresholds that fit your project, without weakening existing required checks or claiming that a metric proves hardware correctness.</p>
+<p><a href="07-versioned-releases.html">Skip directly to release</a> or <a href="06-sbom-optional.html">take SBOM generation independently</a>.</p>
+<h2>Starting checkpoint</h2><p>Lab 4 is complete. Agree supported analysis tools and meaningful thresholds with the customer. Preserve all pre-existing mandatory checks; “optional” describes adding this workshop module, not permission to disable customer policy.</p>
+<h2>Customer activities: select and integrate a gate</h2><ol><li>Choose one or more applicable checks: compiler warnings, static analysis, host-test coverage or firmware size. Confirm that your approved tools support the actual project and toolchain.</li><li>Record the measured source or artifact scope, metric, threshold and reason for that threshold. For size, account for the actual memory layout and any stack, heap or bootloader reservations.</li><li>Integrate the selected checks into your pipeline before packaging/publication, while retaining the required builds, tests and existing customer gates.</li><li>Run the workflow with the quality module selected independently of the optional SBOM module. Retain the diagnostics and confirm which checks actually executed.</li><li>Review failure propagation: a selected gate failure must fail the run and prevent delivery. Do not ignore exit codes, lower a valid threshold just to pass, or report an unselected check as successful.</li></ol>
+<div class="activity"><strong>Customer activity: defend a threshold</strong><p>Choose one applicable gate and explain its metric, relevant source scope, threshold, and failure evidence. Review how its diagnostics identify issues; do not introduce defects in production code to manufacture analyzer failures.</p></div>
+<details id="solution"><summary>Solution and recovery checkpoint</summary>
+<h3>Completed optional quality-gate configuration</h3>
+<p>The completed caller and reusable workflow expose the quality option. For this exercise, manually dispatch Firmware CI with quality enabled; leave SBOM disabled unless selected independently. The reference defaults remain off. The complete size helper is included; the other build/package helpers from lab 4 are unchanged. Existing customer checks remain required.</p>
+<aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. For a project at the repository root, use <code>.</code> in commands and <code>**</code> in source path filters. Also adapt include/source subdirectories, presets and output paths to your project.</p></aside>
+<h4><code>.github/workflows/ci.yml</code></h4>
+<pre><code data-source=".github/workflows/ci.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+# If the project is at the repository root, use &#x27;**&#x27; for its path filter.
+name: Firmware CI
+on:
+  pull_request:
+    paths:
+      - &#x27;path/to/your/project/**&#x27;
+      - &#x27;scripts/**&#x27;
+      - &#x27;.github/workflows/**&#x27;
+  push:
+    branches: [&#x27;workshop/**&#x27;]
+    paths:
+      - &#x27;path/to/your/project/**&#x27;
+      - &#x27;scripts/**&#x27;
+      - &#x27;.github/workflows/**&#x27;
+  workflow_dispatch:
+    inputs:
+      quality:
+        description: Enable optional quality gates
+        type: boolean
+        default: false
+      sbom:
+        description: Generate an optional pre-release SPDX SBOM
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: ${{ inputs.quality == true }}
+      sbom: ${{ inputs.sbom == true }}
+</code></pre>
+<h4><code>.github/workflows/firmware-build.yml</code></h4>
+<aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
+<pre><code data-source=".github/workflows/firmware-build.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+# Adapt presets, include/source directories, output paths and tools to that project.
+name: Reusable firmware build
+on:
+  workflow_call:
+    inputs:
+      quality:
+        type: boolean
+        default: false
+      sbom:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install reference host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13 python3-venv
+      - name: Install verified reference target compiler
+        run: |
+          python3 scripts/install_arm.py
+          echo &quot;$GITHUB_WORKSPACE/.tools/xpack-arm-none-eabi-gcc-15.2.1-1.1/bin&quot; &gt;&gt; &quot;$GITHUB_PATH&quot;
+      - name: Native configure, build and test
+        env:
+          CC: gcc-13
+        # Adapt this CMake setup to your project; host tests require a host compiler.
+        run: |
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+          ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+      - name: Target firmware
+        # Adapt the Arm/CMake toolchain, SDK, CPU/ABI, startup, linker map and paths to your target project.
+        run: |
+          cmake --preset arm -S path/to/your/project
+          cmake --build build/arm
+      - name: Optional quality gates
+        if: inputs.quality
+        env:
+          CC: gcc-13
+        # Adapt host coverage and target size tools to the project&#x27;s actual toolchains.
+        run: |
+          sudo apt-get install -y cppcheck gcovr
+          cmake --preset host-quality -S path/to/your/project
+          cmake --build build/quality
+          ctest --test-dir build/quality --output-on-failure --output-junit test-results.xml
+          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I path/to/your/project/include path/to/your/project/src
+          gcovr --root . --filter path/to/your/project/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
+          python3 scripts/check_size.py build/arm/monitor.elf --flash 16384 --ram 4096
+      - name: Optional SBOM validator dependency
+        if: inputs.sbom
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r scripts/requirements-sbom.txt
+      - name: Package exact built firmware, optionally generating SBOM
+        env:
+          SBOM: ${{ inputs.sbom }}
+        run: |
+          if [ &quot;$SBOM&quot; = &quot;true&quot; ]; then
+            .venv/bin/python scripts/package_firmware.py --sbom
+          else
+            python3 scripts/package_firmware.py
+          fi
+      - name: Retain diagnostic reports, including on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ github.sha }}
+          path: |
+            build/host/test-results.xml
+            build/host/Testing/Temporary/LastTest.log
+            build/quality/test-results.xml
+            build/quality/coverage.xml
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload firmware only after all selected checks pass
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: dist/firmware/
+          if-no-files-found: error
+          retention-days: 7
+</code></pre>
+<p class="reference-intro">These scripts and build-configuration examples complement the workflows for a separate, simple C project using CMake and ARM GCC for compilation. Use them as reference ideas and adapt them to your existing project.</p>
+<details id="reference-ideas" class="reference-ideas"><summary>Reference ideas: supporting files for a simple C project</summary>
+<h4>Quality-check commands</h4>
+<p>The example combines native warnings/coverage, static analysis with project-specific include paths, and a target-size budget. Coverage measures executed source lines, not assertion quality or target timing. Size metrics require separate reasoning about stack, heap, alignment and reserved regions.</p>
+<aside class="callout" data-toolchain><strong>Adapt these CMake/Arm examples to your targeted project.</strong><p>The quality preset requires native GCC/gcov; change the compiler/coverage integration for your host tools. For target size, use your compiler utilities, architecture/ABI, linker layout and actual firmware paths. Adapt SDK, presets and startup configuration as applicable; do not copy this sample target unchanged.</p></aside>
+<pre><code># Reference Ubuntu tools: cppcheck, gcovr, GCC/gcov 13.
+export CC=gcc-13
+cmake --preset host-quality -S path/to/your/project
+cmake --build build/quality
+ctest --test-dir build/quality --output-on-failure --output-junit test-results.xml
+cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I path/to/your/project/include path/to/your/project/src
+gcovr --root . --filter path/to/your/project/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
+python3 scripts/check_size.py build/arm/monitor.elf --flash 16384 --ram 4096</code></pre>
+<p>The reference size check computes flash as <code>.text + .data</code> and RAM as <code>.data + .bss</code>. The optional example limits are 16,384 and 4,096 bytes. Equality passes; exceeding either fails. These are teaching budgets, not the physical device capacity or a stack-safety certificate. Choose metrics and thresholds appropriate to your target.</p>
+<h4><code>scripts/check_size.py</code></h4>
+<aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
+<pre><code data-source="scripts/check_size.py">&quot;&quot;&quot;Optional reference size gate. Adapt size utility/sections/budgets to your target.&quot;&quot;&quot;
+
+import argparse
+import json
+from pathlib import Path
+import subprocess
+
+
+def parse_size(output):
+    rows = output.strip().splitlines()
+    if len(rows) != 2:
+        raise ValueError(f&quot;Expected GNU size header and one image row, got: {output}&quot;)
+    fields = rows[1].split()
+    text, data, bss = map(int, fields[:3])
+    if min(text, data, bss) &lt; 0:
+        raise ValueError(&quot;Negative section size&quot;)
+    return {&quot;text&quot;: text, &quot;data&quot;: data, &quot;bss&quot;: bss, &quot;flash&quot;: text + data, &quot;ram&quot;: data + bss}
+
+
+def within_budget(report, flash, ram):
+    if flash &lt; 0 or ram &lt; 0:
+        raise ValueError(&quot;Budgets must be non-negative byte counts&quot;)
+    return report[&quot;flash&quot;] &lt;= flash and report[&quot;ram&quot;] &lt;= ram
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;elf&quot;, type=Path)
+    parser.add_argument(&quot;--flash&quot;, type=int, required=True)
+    parser.add_argument(&quot;--ram&quot;, type=int, required=True)
+    parser.add_argument(&quot;--size-tool&quot;, default=&quot;arm-none-eabi-size&quot;)
+    args = parser.parse_args()
+    output = subprocess.check_output([args.size_tool, str(args.elf)], text=True)
+    report = parse_size(output)
+    print(json.dumps({**report, &quot;flash_limit&quot;: args.flash, &quot;ram_limit&quot;: args.ram}, indent=2))
+    if not within_budget(report, args.flash, args.ram):
+        raise SystemExit(&quot;Firmware size gate FAILED: one or more byte budgets exceeded&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre>
+</details>
+<h3>Recovery and expected result</h3>
+<p>Successful integration means meaningful checks run, diagnostics survive failure, and selected gate failures block delivery. Unsupported optional tools can be left unselected with an explicit scope note. They must not be reported as passed. Restore an incorrectly configured check rather than lowering a valid threshold merely to make CI green.</p>
+</details>
+<div class="checkpoint"><strong>Done when selected</strong><p>The chosen tools produce reviewable reports and enforce agreed thresholds. If skipped, the required build/test/release path still works unchanged.</p></div>
+<section class="progress-panel"><button id="complete" type="button">Mark this lab completed</button></section><p id="status" class="status" role="status" aria-live="polite"></p>
+<div class="pager"><a href="04-arm-firmware.html">&larr; Target firmware</a><a href="06-sbom-optional.html">Optional: SBOM &rarr;</a><a href="07-versioned-releases.html">Next required lab: release &rarr;</a></div>
+</main><footer>Optional workshop additions never override existing customer-required checks.</footer></body></html>

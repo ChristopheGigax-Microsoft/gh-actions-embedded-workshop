@@ -1,0 +1,27 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "host",
+      "displayName": "Native tests - adapt host compiler to your environment",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../../build/host",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "host-quality",
+      "inherits": "host",
+      "displayName": "Optional native GCC quality gates",
+      "binaryDir": "${sourceDir}/../../build/quality",
+      "cacheVariables": { "QUALITY_GATES": "ON" }
+    },
+    {
+      "name": "arm",
+      "displayName": "Sample Cortex-M3 only - adapt toolchain to your target project",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/../../build/arm",
+      "toolchainFile": "${sourceDir}/cmake/arm-gcc.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "MinSizeRel", "BUILD_FIRMWARE": "ON" }
+    }
+  ]
+}

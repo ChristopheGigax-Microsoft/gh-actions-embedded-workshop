@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Optional extensions | From Commit to Firmware</title><link rel="stylesheet" href="assets/styles.css"></head>
+<body><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="index.html#journey">All labs</a><a href="deployment-concepts.html">Deployment concepts</a><a href="instructor.html">Facilitator</a></nav></div></header>
+<main id="main"><p class="eyebrow">Optional / Beyond the core</p><h1>Extend the evidence, not the claims.</h1>
+<p class="lead">The core is complete without these topics. Add them only when their prerequisites and customer objectives are clear.</p>
+<div class="grid"><article class="card"><h2>Independent pre-release modules</h2><p><a href="labs/05-quality-gates-optional.html">Quality gates</a> and <a href="labs/06-sbom-optional.html">SBOM generation</a> have their own guided labs. Either can run without the other; both precede release when selected.</p></article>
+<article class="card"><h2>Matrices and caches</h2><p>Test supported compiler/configuration combinations. Key caches by compiler version, target, configuration and dependency identity. Never treat a stale cache as validation.</p></article>
+<article class="card"><h2>Emulator execution</h2><p>Choose an actually supported machine model and define a pass/fail protocol, timeout and log capture. Cross-compilation alone is not emulation.</p></article>
+<article class="card"><h2>HIL</h2><p>Choose a real board and isolated trusted runner arrangement. Define device identity, locking, flash/reset, bounded assertions, and recovery before writing a workflow.</p></article>
+<article class="card"><h2>Attestations and signing</h2><p>Distinguish artifact hashes, producer identity/provenance, and device-verified image signatures. Plan key custody and bootloader trust rather than embedding secrets in YAML.</p></article>
+<article class="card"><h2>Other embedded ecosystems</h2><p>Map the same event/build/test/artifact/release structure to vendor SDKs, Zephyr/west, PlatformIO, or embedded Linux. Keep using the customer's actual toolchain.</p></article></div>
+<aside class="callout" data-toolchain><strong>Target adaptation still applies.</strong><p>Any CMake compilation or Arm-build demonstration added for these topics must explicitly tell customers to change the compiler/SDK, target/ABI flags, startup/linker files, presets and paths to fit their targeted project.</p></aside>
+<p>These are discussion ideas, not promises of ready-to-run device workflows. The supplied active examples cover only the tested reference firmware CI/CD path.</p>
+<div class="pager"><a href="deployment-concepts.html">&larr; Deployment discussion</a><a href="index.html">Workshop home</a></div>
+</main><footer>Choose extensions based on actual customer targets, approvals, and available evidence.</footer></body></html>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>From release to device | From Commit to Firmware</title><link rel="stylesheet" href="assets/styles.css"></head>
+<body><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="index.html#journey">All labs</a><a href="extensions.html">Extensions</a><a href="instructor.html">Facilitator</a></nav></div></header>
+<main id="main"><p class="eyebrow">Required discussion / No device operation</p><h1>A release is not a deployed device.</h1>
+<p class="lead">Your pipeline has delivered a package. It has not demonstrated bootability, peripheral correctness, real-time behavior, or safe recovery on physical hardware.</p>
+<div class="table-wrap"><table><thead><tr><th>Evidence</th><th>What it supports</th><th>What it does not prove</th></tr></thead><tbody>
+<tr><td>Host unit tests</td><td>Logic for the tested host inputs/assertions</td><td>Interrupts, peripherals, device compiler behavior</td></tr>
+<tr><td>Target build/link</td><td>Compilation and section placement for that configuration</td><td>Boot, electrical behavior, timing</td></tr>
+<tr><td>Optional static/coverage/size checks</td><td>Defined diagnostics and measured thresholds</td><td>Complete correctness or stack safety</td></tr>
+<tr><td>Optional SBOM</td><td>A documented component inventory</td><td>Vulnerability clearance or completeness without scope evidence</td></tr>
+<tr><td>Release checksums</td><td>Downloaded bytes match recorded digests</td><td>Trusted origin or compatible/safe deployment</td></tr>
+</tbody></table></div>
+<h2>Where HIL belongs</h2><p>An approved trusted-source job can request an isolated hardware lane after software checks. It must identify the exact device, serialize access, flash a compatible package, reset it, collect bounded serial/assertion results, and retain logs even on failure. Define timeouts and a recovery procedure before unattended operation.</p>
+<div class="callout"><strong>Protect the runner and device network.</strong><p>Do not execute untrusted PR code on a persistent self-hosted runner connected to hardware. Prefer isolated, controlled infrastructure for trusted refs. An environment approval alone does not isolate a compromised runner. Feature availability depends on the customer's GitHub plan and repository visibility.</p></div>
+<h2>Safe deployment is target-specific</h2><ol><li>Verify hardware revision, bootloader compatibility, image layout, authenticity, and customer policy.</li><li>Select the exact validated package; do not rebuild or select an ambiguous latest version.</li><li>Require the applicable approval and service/maintenance conditions.</li><li>Use a bootloader/update mechanism that can tolerate interrupted updates.</li><li>Observe post-update boot/health criteria. Roll back only if the device architecture and policy actually support it.</li></ol>
+<div class="activity"><strong>Customer discussion: review a deployment incident</strong><p>A checksum matches, but the device never boots. Which assumptions might be wrong? Consider board revision, memory layout, ABI, startup, bootloader, power interruption, and peripheral initialization. Identify which additional test could supply evidence for each assumption.</p></div>
+<h2>Core workshop completion</h2><p>You can explain the customer build/test pipeline, show the required test-only failure/restoration, identify target artifacts and source identity, and distinguish delivery from deployment. Optional labs do not determine core completion. A blocked customer publication step must remain explicitly documented.</p>
+<p>The release workflow and release-verification references are included directly in lab 7's solution checkpoint. It reuses the CI/build workflows from the earlier labs rather than repeating them. No separate solution page is needed.</p>
+<p><a href="extensions.html">Explore optional next topics</a> or <a href="index.html">return to the learning journey</a>.</p>
+<h2>Authoritative references</h2><ul><li><a href="https://docs.github.com/en/actions/reference/security/secure-use">GitHub Actions secure use</a></li><li><a href="https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments">Deployments, environments, and feature constraints</a></li></ul>
+<div class="pager"><a href="labs/07-versioned-releases.html">&larr; Versioned release</a><a href="extensions.html">Optional extensions &rarr;</a></div>
+</main><footer>No flashing, OTA, simulated deployment, or unspecified-hardware workflow is part of the core.</footer></body></html>

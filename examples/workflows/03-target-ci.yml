@@ -1,0 +1,24 @@
+# Lab 4 checkpoint: save or merge as .github/workflows/ci.yml.
+# REQUIRED: replace path/to/your/project with your repository-relative source path.
+# If the project is at the repository root, use '**' for its path filter.
+name: Firmware CI
+on:
+  pull_request:
+    paths:
+      - 'path/to/your/project/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  push:
+    branches: ['workshop/**']
+    paths:
+      - 'path/to/your/project/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml

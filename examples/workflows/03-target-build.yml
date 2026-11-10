@@ -1,0 +1,63 @@
+# Lab 4 checkpoint: save or merge as .github/workflows/firmware-build.yml.
+# REQUIRED: replace path/to/your/project with your repository-relative source path.
+# Adapt compiler/SDK, presets, runner and source/build/artifact paths to your target.
+name: Reusable firmware build
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install reference host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13 python3
+      - name: Install verified reference target compiler
+        run: |
+          python3 scripts/install_arm.py
+          echo "$GITHUB_WORKSPACE/.tools/xpack-arm-none-eabi-gcc-15.2.1-1.1/bin" >> "$GITHUB_PATH"
+      - name: Native configure, build and test
+        env:
+          CC: gcc-13
+        # Host tests use a host compiler; adapt this CMake setup to your project.
+        run: |
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+          ctest --test-dir build/host --output-on-failure --no-tests=error --output-junit test-results.xml
+      - name: Target firmware
+        # Adapt Arm GCC, SDK, CPU/ABI, startup and linker configuration to your target.
+        run: |
+          cmake --preset arm -S path/to/your/project
+          cmake --build build/arm
+      - name: Verify the expected target outputs
+        # Replace these filenames and formats with your project's actual outputs.
+        run: |
+          test -s build/arm/monitor.elf
+          test -s build/arm/monitor.bin
+          test -s build/arm/monitor.map
+      - name: Retain diagnostic reports, including on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ github.sha }}
+          path: |
+            build/host/test-results.xml
+            build/host/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload target outputs after required checks pass
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: target-build-${{ github.sha }}
+          path: |
+            build/arm/monitor.elf
+            build/arm/monitor.bin
+            build/arm/monitor.map
+          if-no-files-found: error
+          retention-days: 7

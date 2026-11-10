@@ -1,0 +1,89 @@
+# REQUIRED: replace path/to/your/project with your repository-relative source path.
+# Adapt presets, include/source directories, output paths and tools to that project.
+name: Reusable firmware build
+on:
+  workflow_call:
+    inputs:
+      quality:
+        type: boolean
+        default: false
+      sbom:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install reference host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13 python3-venv
+      - name: Install verified reference target compiler
+        run: |
+          python3 scripts/install_arm.py
+          echo "$GITHUB_WORKSPACE/.tools/xpack-arm-none-eabi-gcc-15.2.1-1.1/bin" >> "$GITHUB_PATH"
+      - name: Native configure, build and test
+        env:
+          CC: gcc-13
+        # Adapt this CMake setup to your project; host tests require a host compiler.
+        run: |
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+          ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+      - name: Target firmware
+        # Adapt the Arm/CMake toolchain, SDK, CPU/ABI, startup, linker map and paths to your target project.
+        run: |
+          cmake --preset arm -S path/to/your/project
+          cmake --build build/arm
+      - name: Optional quality gates
+        if: inputs.quality
+        env:
+          CC: gcc-13
+        # Adapt host coverage and target size tools to the project's actual toolchains.
+        run: |
+          sudo apt-get install -y cppcheck gcovr
+          cmake --preset host-quality -S path/to/your/project
+          cmake --build build/quality
+          ctest --test-dir build/quality --output-on-failure --output-junit test-results.xml
+          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I path/to/your/project/include path/to/your/project/src
+          gcovr --root . --filter path/to/your/project/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
+          python3 scripts/check_size.py build/arm/monitor.elf --flash 16384 --ram 4096
+      - name: Optional SBOM validator dependency
+        if: inputs.sbom
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r scripts/requirements-sbom.txt
+      - name: Package exact built firmware, optionally generating SBOM
+        env:
+          SBOM: ${{ inputs.sbom }}
+        run: |
+          if [ "$SBOM" = "true" ]; then
+            .venv/bin/python scripts/package_firmware.py --sbom
+          else
+            python3 scripts/package_firmware.py
+          fi
+      - name: Retain diagnostic reports, including on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ github.sha }}
+          path: |
+            build/host/test-results.xml
+            build/host/Testing/Temporary/LastTest.log
+            build/quality/test-results.xml
+            build/quality/coverage.xml
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload firmware only after all selected checks pass
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: dist/firmware/
+          if-no-files-found: error
+          retention-days: 7

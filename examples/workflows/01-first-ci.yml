@@ -1,0 +1,22 @@
+# Teaching checkpoint; copy/adapt into your CUSTOMER repository after reviewing existing workflows.
+# Adapt CMake compiler/SDK, presets, runner and paths to your target project.
+# REQUIRED: replace path/to/your/project with your repository-relative source path.
+name: Workshop first build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13
+      - name: Reference native build - adapt host compiler and CMake paths
+        env:
+          CC: gcc-13
+        run: |
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="A hands-on embedded CI/CD workshop using customer projects and GitHub Actions."><title>From Commit to Firmware</title><link rel="stylesheet" href="assets/styles.css"><script src="assets/workshop.js" defer></script></head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header><div class="bar"><a class="brand" href="index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="prerequisites.html">Preflight</a><a href="#journey">Labs</a><a href="troubleshooting.html">Troubleshooting</a><a href="instructor.html">Facilitator</a></nav></div></header>
+<main id="main">
+<p class="eyebrow">Embedded engineering / GitHub Actions</p>
+<h1>Your code. Your target. A repeatable pipeline.</h1>
+<p class="lead">Build a firmware delivery pipeline around your existing customer project. Automate builds and tests, follow a failure back to its cause, and publish firmware you can trace to the exact source commit.</p>
+<div class="chips"><span class="chip">English</span><span class="chip">At least 2 hours of core activities</span><span class="chip">No hardware required</span><span class="chip">Existing customer environment</span></div>
+<a class="button" href="prerequisites.html">Start with customer preflight</a>
+<aside class="callout"><strong>CMake and Arm are reference examples, not required customer targets.</strong><p>For every compilation example, adapt the toolchain to your targeted project: compiler/version, architecture, SDK, CPU/ABI flags, startup code, linker script, presets, runner, and output paths. Native tests need a host compiler. You do not have to migrate your project to CMake.</p></aside>
+<h2>What you will leave with</h2>
+<p>A build/test workflow in your own repository, actual target firmware artifacts, a diagnosed red-to-green CI run, and a versioned release with checksums and source/toolchain identity. Optionally add quality gates and a software bill of materials (SBOM) before release.</p>
+<p>This is <strong>continuous integration and continuous delivery</strong>. Publishing a package is not device deployment. Real flashing, OTA, and hardware validation are discussed separately.</p>
+<h2 id="journey">The learning journey</h2>
+<p>Complete preflight before the facilitated session. Follow labs 1-4 and 7 plus the deployment discussion for the mandatory route. The facilitator guide provides a core activity budget of 150 minutes, excluding the independent optional labs.</p>
+<div class="grid">
+<article class="card"><span class="number">01 / REQUIRED</span><h3><a href="labs/01-local-build.html">Make the build repeatable</a></h3><p>Map your project's real build commands, dependencies, and target configuration.</p></article>
+<article class="card"><span class="number">02 / REQUIRED</span><h3><a href="labs/02-first-pipeline.html">Your first CI workflow</a></h3><p>Move the reproducible build onto an approved runner and inspect the evidence.</p></article>
+<article class="card"><span class="number">03 / REQUIRED</span><h3><a href="labs/03-tests-and-debugging.html">See red. Diagnose. Restore green.</a></h3><p>Change only a test expectation, observe the failed assertion, then restore it.</p></article>
+<article class="card"><span class="number">04 / REQUIRED</span><h3><a href="labs/04-arm-firmware.html">Build target firmware</a></h3><p>Separate host tests from target compilation and identify genuine firmware outputs.</p></article>
+<article class="card"><span class="optional">05 / OPTIONAL</span><h3><a href="labs/05-quality-gates-optional.html">Add quality gates</a></h3><p>Warnings, analysis, coverage, and a size budget. Existing customer gates stay intact.</p></article>
+<article class="card"><span class="optional">06 / OPTIONAL</span><h3><a href="labs/06-sbom-optional.html">Generate an SBOM</a></h3><p>Create a scoped, machine-readable inventory before publishing the firmware.</p></article>
+<article class="card"><span class="number">07 / REQUIRED</span><h3><a href="labs/07-versioned-releases.html">Deliver a versioned release</a></h3><p>Promote the exact validated package, not an arbitrary rebuild or latest artifact.</p></article>
+<article class="card"><span class="number">DISCUSSION</span><h3><a href="deployment-concepts.html">From release to device</a></h3><p>Understand the missing evidence: HIL, compatibility, health checks, and recovery.</p></article>
+</div>
+<h2>Work in your existing project</h2>
+<p>Use your existing GitHub repository and approved environment. Map the reference instructions to your tools; do not copy sample paths blindly. Keep your source and reports inside approved customer infrastructure.</p>
+<h2>Working example files</h2>
+<p><a href="workflow-examples.html">Read and copy the complete workflow examples directly in this workshop</a>: first build, tests, CI caller, reusable firmware build, and versioned release. All supporting scripts are included on the same page. You do not need access to the workshop repository. These examples automate firmware only.</p>
+<p><a href="workflow-examples.html">Complete workflow examples</a> &middot; <a href="solutions.html">Lab solutions</a> &middot; <a href="solutions.html#final">Final pipeline solution</a> &middot; <a href="extensions.html">Optional advanced topics</a></p>
+</main><footer>Static workshop content for VibeHub. No account, telemetry, backend, or external assets required.</footer>
+</body></html>

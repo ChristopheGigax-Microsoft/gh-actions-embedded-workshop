@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>01 Repeatable build | From Commit to Firmware</title><link rel="stylesheet" href="../assets/styles.css"><script src="../assets/workshop.js" defer></script></head>
+<body data-lab="01"><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="../index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="../prerequisites.html">Preflight</a><a href="../index.html#journey">All labs</a><a href="../troubleshooting.html">Troubleshooting</a></nav></div></header>
+<main id="main"><p class="eyebrow">01 / Required / Build foundation</p><h1>Make the build repeatable.</h1>
+<p class="lead">Find and verify your existing build and test commands, then note them in OneNote or another approved place for lab 2.</p>
+<h2>Purpose</h2><p>Establish a repeatable local baseline so that the next lab can automate your actual project without guessing how it builds or tests.</p>
+<h2>Starting checkpoint</h2><p>Preflight is complete. You are on an approved workshop branch in the customer repository, with a working baseline and no production deployment trigger attached.</p>
+<h2>Customer activities: inspect before you automate</h2><ol><li>Locate the build entry point, dependency setup, and outputs. Which steps depend on your workstation state?</li><li>Identify host-test and target configurations. Record the compiler and target used by each.</li><li>Find the project's existing presets or equivalent scripts. Prefer those over duplicating IDE settings in YAML.</li><li>Record a clean output directory and exact tool versions. Avoid using artifacts left behind by a previous build.</li></ol>
+<h2>Write your command notes</h2><p>Use OneNote, a text file or another customer-approved location. No new script, preset or build configuration is required for this lab. Keep using the project's existing build system.</p>
+<ul><li>The working directory and environment/dependency setup commands, including compiler/SDK versions.</li><li>The exact configure, build and test commands, in execution order.</li><li>The configuration used by each command: native host tests or target firmware.</li><li>The build output, firmware artifact and test-report locations.</li></ul>
+<p>Verify the commands from a clean build directory, then keep these notes for lab 2. Do not delete existing customer-owned outputs indiscriminately or commit generated directories or local SDK licenses.</p>
+<div class="activity"><strong>Customer activity: clean-room explanation</strong><p>In pairs, explain how a new approved runner would obtain each dependency and execute the same build. Identify at least one hidden workstation dependency and decide where its setup belongs.</p></div>
+<h2>Discuss the evidence</h2><ul><li>What would change if the runner has no access to the vendor SDK?</li><li>Does the build require a GUI, interactive license prompt, or network share?</li><li>Are host tests actually running application logic, or only compiling it?</li></ul>
+<details id="solution"><summary>Solution and recovery checkpoint</summary>
+<h3>Your verified command notes</h3>
+<p>The solution is your own short set of notes: environment setup, configure/build/test commands, host or target configuration, and output/report paths. OneNote is enough; there is no configuration file to create or copy for this checkpoint. In lab 2, you will translate these verified commands into workflow steps.</p>
+<h3>Optional command illustration</h3>
+<aside class="callout" data-toolchain><strong>Adapt to your target project before running.</strong><p>CMake and the following paths are references. Replace the toolchain/compiler, SDK, CPU/ABI flags, startup/linker configuration, presets, and output paths to fit your targeted project. For this native example, choose a host compiler. Changing toolchains requires a fresh build directory.</p></aside>
+<pre><code># Illustrative native commands: use your project's existing configuration.
+cmake -S . -B build/workshop-host
+cmake --build build/workshop-host
+ctest --test-dir build/workshop-host --output-on-failure --output-junit test-results.xml</code></pre>
+<p>The first command configures; the second compiles/links; the third executes tests. CMake does not select the correct hardware target by itself. With a different build system, substitute your existing configure/build/test commands; no migration is required.</p>
+<p>A clean build succeeds and at least one real test executes and passes. If changing the compiler leaves stale CMake state, use a separate clean output directory rather than deleting customer-owned files indiscriminately. If no tests execute, fix test discovery before treating the checkpoint as complete.</p>
+</details>
+<div class="checkpoint"><strong>Done when</strong><p>Your recorded commands produce a clean successful build, your chosen test executes and passes, and the output/report locations are known. Keep your notes and report inside the customer environment, ready for lab 2.</p></div>
+<section class="progress-panel"><button id="complete" type="button">Mark this lab completed</button></section><p id="status" class="status" role="status" aria-live="polite"></p>
+<div class="pager"><a href="../prerequisites.html">&larr; Preflight</a><a href="02-first-pipeline.html">Next: first pipeline &rarr;</a></div>
+</main><footer>Reference commands must be adapted to the customer's targeted project and toolchain.</footer></body></html>

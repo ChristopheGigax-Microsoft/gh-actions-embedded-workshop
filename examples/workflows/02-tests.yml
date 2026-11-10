@@ -1,0 +1,29 @@
+# Teaching checkpoint; adapt existing customer workflows rather than overwriting them.
+# Adapt CMake toolchain/presets/paths; native tests need a host compiler.
+name: Workshop build and tests
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13
+      - name: Native build and real tests - adapt toolchain to your project
+        env:
+          CC: gcc-13
+        run: |
+          # REQUIRED: replace this placeholder with your repository-relative project path.
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+          ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: workshop-test-report
+          path: build/host/test-results.xml
+          if-no-files-found: warn

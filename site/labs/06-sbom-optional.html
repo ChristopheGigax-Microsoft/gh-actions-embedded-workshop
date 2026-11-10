@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>06 Optional SBOM | From Commit to Firmware</title><link rel="stylesheet" href="../assets/styles.css"><script src="../assets/workshop.js" defer></script></head>
+<body data-lab="06-optional"><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="../index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="../index.html#journey">All labs</a><a href="05-quality-gates-optional.html">Optional quality</a><a href="../troubleshooting.html">Troubleshooting</a></nav></div></header>
+<main id="main"><p class="eyebrow">06 / Optional / Before release</p><h1>Know what you are delivering.</h1>
+<p class="lead">Generate a software bill of materials before the versioned release. This module is independent of quality gates: choose either, both, or neither.</p>
+<aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. For a project at the repository root, use <code>.</code> in commands and <code>**</code> in source path filters. Also adapt include/source subdirectories, presets and output paths to your project.</p></aside>
+<p><a href="07-versioned-releases.html">Skip to versioned release</a>.</p>
+<h2>Starting checkpoint</h2><p>Passing required tests and actual target outputs already exist. Select an approved SBOM generator that understands your project's dependency/build information, inventory scope, and customer data rules.</p>
+<h2>Define the inventory honestly</h2><p>An SBOM is a machine-readable component inventory. It is not a vulnerability scan, digital signature, provenance attestation, or completeness guarantee. A scan of a source directory alone does not establish which libraries are actually linked into firmware.</p>
+<ul><li>Identify the application, linked libraries, and relevant vendor/RTOS components where your tools can establish them.</li><li>Distinguish firmware components from build-only tools such as the compiler and generator.</li><li>Document unresolved versions, unknown licenses, and undiscovered/proprietary components rather than inventing answers.</li><li>Select an accepted output format: SPDX JSON or CycloneDX JSON, with an explicit schema version.</li></ul>
+<h2>Reference example: scoped SPDX 2.3 JSON</h2><p>The example generator inventories an explicit list of application/header/startup/linker files with hashes, records the ELF checksum and source commit, and declares unknown licenses <code>NOASSERTION</code>. It does not discover external dependencies and must not be used unchanged to describe your firmware. Use approved dependency-aware tooling for your project's SDKs, RTOSes, vendor libraries, and other linked components, and document the resulting inventory scope.</p>
+<p>The complete package/SBOM generator, validator and optional requirements file are included in the solution checkpoint below. Copy them into the indicated paths in your own repository only after adapting their paths and inventory, or substitute approved project tooling.</p>
+<pre><code># Use the same already-built firmware and passing test report.
+python3 -m pip install -r scripts/requirements-sbom.txt
+python3 scripts/package_firmware.py --sbom
+python3 scripts/validate_sbom.py dist/firmware/sbom.spdx.json</code></pre>
+<p>The validator checks the official SPDX 2.3 JSON schema pinned to an immutable specification commit and checksum. Packaging additionally checks source/ELF identity and internal relationships. Schema validity alone does not prove the inventory is complete.</p>
+<h2>Associate it with the release</h2><ol><li>Generate the inventory from the same commit/build inputs as the target firmware, before publishing.</li><li>Record generator/version, source commit, inventory scope, and firmware checksum.</li><li>Validate the document format and verify the source/package association.</li><li>Include <code>sbom.spdx.json</code> as a release asset and in the delivery bundle's checksums.</li></ol>
+<pre><code>jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: false
+      sbom: true</code></pre>
+<p>If the selected generator or validation fails, this configured run must not publish. If the module is deliberately disabled, the release must not depend on a missing SBOM artifact or claim that one was generated.</p>
+<p>The full CI caller and reusable firmware-build implementation are also included in this lab's solution checkpoint.</p>
+<div class="activity"><strong>Customer activity: inventory review</strong><p>Choose a known firmware dependency and find its name/version/license evidence in your generator's output. Explain what you would do if it were missing. Review whether customer policy permits storing the inventory with release assets; do not upload source to an external analysis service without approval.</p></div>
+<details id="solution"><summary>Solution and recovery checkpoint</summary>
+<h3>Completed optional SBOM configuration</h3>
+<p>Manually dispatch Firmware CI with SBOM enabled; quality is independently selectable. The complete generation, validation and package code is below. Replace the fixed reference inventory with your approved component-aware tooling and actual project scope. The compiler setup from lab 4 is unchanged. SBOM failures block this configured run; skipping SBOM leaves its tools and artifacts unnecessary.</p>
+<h4><code>.github/workflows/ci.yml</code></h4>
+<pre><code data-source=".github/workflows/ci.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+# If the project is at the repository root, use &#x27;**&#x27; for its path filter.
+name: Firmware CI
+on:
+  pull_request:
+    paths:
+      - &#x27;path/to/your/project/**&#x27;
+      - &#x27;scripts/**&#x27;
+      - &#x27;.github/workflows/**&#x27;
+  push:
+    branches: [&#x27;workshop/**&#x27;]
+    paths:
+      - &#x27;path/to/your/project/**&#x27;
+      - &#x27;scripts/**&#x27;
+      - &#x27;.github/workflows/**&#x27;
+  workflow_dispatch:
+    inputs:
+      quality:
+        description: Enable optional quality gates
+        type: boolean
+        default: false
+      sbom:
+        description: Generate an optional pre-release SPDX SBOM
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: ${{ inputs.quality == true }}
+      sbom: ${{ inputs.sbom == true }}
+</code></pre>
+<h4><code>.github/workflows/firmware-build.yml</code></h4>
+<aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
+<pre><code data-source=".github/workflows/firmware-build.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+# Adapt presets, include/source directories, output paths and tools to that project.
+name: Reusable firmware build
+on:
+  workflow_call:
+    inputs:
+      quality:
+        type: boolean
+        default: false
+      sbom:
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  firmware:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install reference host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13 python3-venv
+      - name: Install verified reference target compiler
+        run: |
+          python3 scripts/install_arm.py
+          echo &quot;$GITHUB_WORKSPACE/.tools/xpack-arm-none-eabi-gcc-15.2.1-1.1/bin&quot; &gt;&gt; &quot;$GITHUB_PATH&quot;
+      - name: Native configure, build and test
+        env:
+          CC: gcc-13
+        # Adapt this CMake setup to your project; host tests require a host compiler.
+        run: |
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+          ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+      - name: Target firmware
+        # Adapt the Arm/CMake toolchain, SDK, CPU/ABI, startup, linker map and paths to your target project.
+        run: |
+          cmake --preset arm -S path/to/your/project
+          cmake --build build/arm
+      - name: Optional quality gates
+        if: inputs.quality
+        env:
+          CC: gcc-13
+        # Adapt host coverage and target size tools to the project&#x27;s actual toolchains.
+        run: |
+          sudo apt-get install -y cppcheck gcovr
+          cmake --preset host-quality -S path/to/your/project
+          cmake --build build/quality
+          ctest --test-dir build/quality --output-on-failure --output-junit test-results.xml
+          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I path/to/your/project/include path/to/your/project/src
+          gcovr --root . --filter path/to/your/project/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
+          python3 scripts/check_size.py build/arm/monitor.elf --flash 16384 --ram 4096
+      - name: Optional SBOM validator dependency
+        if: inputs.sbom
+        run: |
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r scripts/requirements-sbom.txt
+      - name: Package exact built firmware, optionally generating SBOM
+        env:
+          SBOM: ${{ inputs.sbom }}
+        run: |
+          if [ &quot;$SBOM&quot; = &quot;true&quot; ]; then
+            .venv/bin/python scripts/package_firmware.py --sbom
+          else
+            python3 scripts/package_firmware.py
+          fi
+      - name: Retain diagnostic reports, including on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: diagnostics-${{ github.sha }}
+          path: |
+            build/host/test-results.xml
+            build/host/Testing/Temporary/LastTest.log
+            build/quality/test-results.xml
+            build/quality/coverage.xml
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Upload firmware only after all selected checks pass
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: dist/firmware/
+          if-no-files-found: error
+          retention-days: 7
+</code></pre>
+<h4><code>scripts/package_firmware.py</code></h4>
+<aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
+<pre><code data-source="scripts/package_firmware.py">&quot;&quot;&quot;Package already-built reference firmware; optional SBOM before publication.&quot;&quot;&quot;
+
+import argparse
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import tempfile
+import xml.etree.ElementTree as ET
+
+ROOT = Path(__file__).resolve().parents[1]
+# REQUIRED: set this to your project path and adapt INVENTORY to its actual sources.
+SOURCE = ROOT / &quot;path/to/your/project&quot;
+INVENTORY = (
+    &quot;src/monitor.c&quot;,
+    &quot;include/monitor.h&quot;,
+    &quot;platform/main.c&quot;,
+    &quot;platform/startup.S&quot;,
+    &quot;platform/memory.ld&quot;,
+)
+
+
+def sha256(path):
+    with path.open(&quot;rb&quot;) as stream:
+        return hashlib.file_digest(stream, &quot;sha256&quot;).hexdigest()
+
+
+def require_passing_tests(path):
+    tree = ET.parse(path)
+    suites = list(tree.getroot().iter(&quot;testsuite&quot;))
+    if not suites or sum(int(suite.get(&quot;tests&quot;, &quot;0&quot;)) for suite in suites) &lt; 1:
+        raise ValueError(&quot;No executed tests in report&quot;)
+    if any(int(suite.get(field, &quot;0&quot;)) for suite in suites for field in (&quot;failures&quot;, &quot;errors&quot;, &quot;skipped&quot;)):
+        raise ValueError(&quot;Failed, errored or skipped tests prevent firmware packaging&quot;)
+
+
+def make_sbom(commit, elf_sha, created):
+    files = []
+    for number, name in enumerate(INVENTORY, 1):
+        files.append({
+            &quot;SPDXID&quot;: f&quot;SPDXRef-File-{number}&quot;,
+            &quot;fileName&quot;: f&quot;./{name}&quot;,
+            &quot;checksums&quot;: [
+                {&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: sha256(SOURCE / name)},
+                {&quot;algorithm&quot;: &quot;SHA1&quot;, &quot;checksumValue&quot;: hashlib.sha1((SOURCE / name).read_bytes()).hexdigest()},
+            ],
+            &quot;licenseConcluded&quot;: &quot;NOASSERTION&quot;,
+            &quot;copyrightText&quot;: &quot;NOASSERTION&quot;,
+        })
+    return {
+        &quot;spdxVersion&quot;: &quot;SPDX-2.3&quot;,
+        &quot;dataLicense&quot;: &quot;CC0-1.0&quot;,
+        &quot;SPDXID&quot;: &quot;SPDXRef-DOCUMENT&quot;,
+        &quot;name&quot;: &quot;workshop-monitor-firmware&quot;,
+        &quot;documentNamespace&quot;: f&quot;https://spdx.org/spdxdocs/workshop-monitor-{commit}-{elf_sha}&quot;,
+        &quot;creationInfo&quot;: {&quot;creators&quot;: [&quot;Tool: workshop-fixture-sbom-1.0&quot;], &quot;created&quot;: created},
+        &quot;documentDescribes&quot;: [&quot;SPDXRef-Firmware&quot;],
+        &quot;packages&quot;: [{
+            &quot;SPDXID&quot;: &quot;SPDXRef-Firmware&quot;,
+            &quot;name&quot;: &quot;workshop-monitor&quot;,
+            &quot;versionInfo&quot;: commit,
+            &quot;downloadLocation&quot;: &quot;NOASSERTION&quot;,
+            &quot;filesAnalyzed&quot;: True,
+            &quot;packageVerificationCode&quot;: {
+                &quot;packageVerificationCodeValue&quot;: hashlib.sha1(
+                    &quot;&quot;.join(sorted(hashlib.sha1((SOURCE / name).read_bytes()).hexdigest()
+                                   for name in INVENTORY)).encode(&quot;ascii&quot;)
+                ).hexdigest()
+            },
+            &quot;checksums&quot;: [{&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: elf_sha}],
+            &quot;licenseConcluded&quot;: &quot;NOASSERTION&quot;,
+            &quot;licenseDeclared&quot;: &quot;NOASSERTION&quot;,
+            &quot;copyrightText&quot;: &quot;NOASSERTION&quot;,
+            &quot;comment&quot;: &quot;Reference source inventory only. No external runtime libraries linked (-nostdlib). &quot;
+                       &quot;Build tools are recorded separately in manifest.json. &quot;
+                       &quot;Not a general customer dependency scanner or vulnerability assessment.&quot;,
+        }],
+        &quot;files&quot;: files,
+        &quot;relationships&quot;: [
+            {&quot;spdxElementId&quot;: &quot;SPDXRef-DOCUMENT&quot;, &quot;relationshipType&quot;: &quot;DESCRIBES&quot;,
+             &quot;relatedSpdxElement&quot;: &quot;SPDXRef-Firmware&quot;},
+            *({&quot;spdxElementId&quot;: &quot;SPDXRef-Firmware&quot;, &quot;relationshipType&quot;: &quot;CONTAINS&quot;,
+               &quot;relatedSpdxElement&quot;: item[&quot;SPDXID&quot;]} for item in files),
+        ],
+    }
+
+
+def verify_package(directory):
+    manifest = json.loads((directory / &quot;manifest.json&quot;).read_text(encoding=&quot;utf-8&quot;))
+    entries = {}
+    for line in (directory / &quot;SHA256SUMS&quot;).read_text(encoding=&quot;ascii&quot;).splitlines():
+        digest, name = line.split(&quot;  &quot;, 1)
+        if name in entries or Path(name).name != name or &quot;/&quot; in name or &quot;\\&quot; in name:
+            raise ValueError(&quot;Invalid or duplicate checksum filename&quot;)
+        entries[name] = digest
+    expected_files = {&quot;monitor.elf&quot;, &quot;monitor.bin&quot;, &quot;monitor.map&quot;, &quot;manifest.json&quot;}
+    if manifest[&quot;sbom&quot;]:
+        expected_files.add(&quot;sbom.spdx.json&quot;)
+    if set(entries) != expected_files:
+        raise ValueError(&quot;Checksum inventory does not match selected package contents&quot;)
+    actual_files = {item.name for item in directory.iterdir()}
+    if actual_files != expected_files | {&quot;SHA256SUMS&quot;}:
+        raise ValueError(&quot;Package contains missing or unexpected files&quot;)
+    for name, digest in entries.items():
+        if sha256(directory / name) != digest:
+            raise ValueError(f&quot;Checksum mismatch: {name}&quot;)
+    for name, digest in manifest[&quot;firmware&quot;].items():
+        if entries.get(name) != digest:
+            raise ValueError(f&quot;Manifest identity mismatch: {name}&quot;)
+    if manifest[&quot;sbom&quot;]:
+        from validate_sbom import check_identity
+        check_identity(json.loads((directory / &quot;sbom.spdx.json&quot;).read_text(encoding=&quot;utf-8&quot;)),
+                       manifest[&quot;commit&quot;], manifest[&quot;firmware&quot;][&quot;monitor.elf&quot;])
+    return manifest
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;--sbom&quot;, action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--test-report&quot;, type=Path, default=ROOT / &quot;build/host/test-results.xml&quot;)
+    parser.add_argument(&quot;--verify&quot;, type=Path)
+    args = parser.parse_args()
+    if args.verify:
+        manifest = verify_package(args.verify)
+        print(f&quot;Verified package for {manifest[&#x27;commit&#x27;]}&quot;)
+        return
+    require_passing_tests(args.test_report)
+    commit = subprocess.check_output([&quot;git&quot;, &quot;rev-parse&quot;, &quot;HEAD&quot;], cwd=ROOT, text=True).strip()
+    dirty = bool(subprocess.check_output([&quot;git&quot;, &quot;status&quot;, &quot;--porcelain&quot;], cwd=ROOT, text=True).strip())
+    created = datetime.now(timezone.utc).strftime(&quot;%Y-%m-%dT%H:%M:%SZ&quot;)
+    with tempfile.TemporaryDirectory() as temporary:
+        staging = Path(temporary)
+        firmware = {}
+        for name in (&quot;monitor.elf&quot;, &quot;monitor.bin&quot;, &quot;monitor.map&quot;):
+            shutil.copyfile(ROOT / &quot;build/arm&quot; / name, staging / name)
+            firmware[name] = sha256(staging / name)
+        compiler = subprocess.check_output([&quot;arm-none-eabi-gcc&quot;, &quot;--version&quot;], text=True).splitlines()[0]
+        cmake = subprocess.check_output([&quot;cmake&quot;, &quot;--version&quot;], text=True).splitlines()[0]
+        manifest = {
+            &quot;commit&quot;: commit, &quot;dirty&quot;: dirty, &quot;created&quot;: created,
+            &quot;target&quot;: &quot;reference-cortex-m3-not-hardware-validated&quot;,
+            &quot;toolchain&quot;: compiler, &quot;cmake&quot;: cmake,
+            &quot;sbom&quot;: args.sbom, &quot;firmware&quot;: firmware,
+            &quot;test_report_sha256&quot;: sha256(args.test_report),
+        }
+        (staging / &quot;manifest.json&quot;).write_text(json.dumps(manifest, indent=2) + &quot;\n&quot;, encoding=&quot;utf-8&quot;)
+        if args.sbom:
+            from validate_sbom import check_identity, validate
+            sbom_path = staging / &quot;sbom.spdx.json&quot;
+            sbom_path.write_text(json.dumps(make_sbom(commit, firmware[&quot;monitor.elf&quot;], created), indent=2) + &quot;\n&quot;,
+                                 encoding=&quot;utf-8&quot;)
+            check_identity(validate(sbom_path), commit, firmware[&quot;monitor.elf&quot;])
+        sums = &quot;&quot;.join(f&quot;{sha256(path)}  {path.name}\n&quot; for path in sorted(staging.iterdir()))
+        (staging / &quot;SHA256SUMS&quot;).write_text(sums, encoding=&quot;ascii&quot;)
+        verify_package(staging)
+        destination = ROOT / &quot;dist/firmware&quot;
+        destination.mkdir(parents=True, exist_ok=True)
+        allowed = {&quot;monitor.elf&quot;, &quot;monitor.bin&quot;, &quot;monitor.map&quot;, &quot;manifest.json&quot;, &quot;sbom.spdx.json&quot;, &quot;SHA256SUMS&quot;}
+        if any(path.name not in allowed or not path.is_file() for path in destination.iterdir()):
+            raise ValueError(f&quot;Refusing to overwrite unexpected contents of {destination}&quot;)
+        for name in allowed:
+            target = destination / name
+            if target.is_file():
+                target.unlink()
+        for path in staging.iterdir():
+            shutil.copyfile(path, destination / path.name)
+    print(f&quot;Verified firmware package: {destination}; dirty source: {dirty}&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre>
+<h4><code>scripts/validate_sbom.py</code></h4>
+<pre><code data-source="scripts/validate_sbom.py">&quot;&quot;&quot;Validate SPDX 2.3 JSON with a pinned official schema and fixture semantics.&quot;&quot;&quot;
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import urllib.request
+
+SCHEMA_URL = (
+    &quot;https://raw.githubusercontent.com/spdx/spdx-spec/&quot;
+    &quot;aadf3b0b8dbbabdb4d880b0fc714255fea436ff7/schemas/spdx-schema.json&quot;
+)
+SCHEMA_SHA256 = &quot;239208b7ac287b3cf5d9a9af23f9d69863971102a5e1587a27a398b43490b89b&quot;
+
+
+def check_identity(document, commit, elf_sha):
+    package = document[&quot;packages&quot;][0]
+    if package[&quot;versionInfo&quot;] != commit:
+        raise ValueError(&quot;SBOM source commit does not match manifest&quot;)
+    expected = {&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: elf_sha}
+    if expected not in package[&quot;checksums&quot;]:
+        raise ValueError(&quot;SBOM firmware hash does not match manifest&quot;)
+    if not document[&quot;files&quot;]:
+        raise ValueError(&quot;SBOM contains no source inventory&quot;)
+    identifiers = {document[&quot;SPDXID&quot;]}
+    identifiers.update(item[&quot;SPDXID&quot;] for item in document[&quot;packages&quot;])
+    identifiers.update(item[&quot;SPDXID&quot;] for item in document[&quot;files&quot;])
+    if len(identifiers) != 1 + len(document[&quot;packages&quot;]) + len(document[&quot;files&quot;]):
+        raise ValueError(&quot;SBOM SPDX identifiers must be unique&quot;)
+    for relation in document[&quot;relationships&quot;]:
+        if relation[&quot;spdxElementId&quot;] not in identifiers or relation[&quot;relatedSpdxElement&quot;] not in identifiers:
+            raise ValueError(&quot;SBOM relationship references a missing element&quot;)
+
+
+def validate(path):
+    import jsonschema
+
+    document = json.loads(path.read_text(encoding=&quot;utf-8&quot;))
+    with urllib.request.urlopen(SCHEMA_URL, timeout=60) as response:
+        schema_bytes = response.read()
+    if hashlib.sha256(schema_bytes).hexdigest() != SCHEMA_SHA256:
+        raise ValueError(&quot;Official SPDX schema checksum mismatch&quot;)
+    jsonschema.Draft7Validator(json.loads(schema_bytes)).validate(document)
+    return document
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(&quot;sbom&quot;, type=Path)
+    args = parser.parse_args()
+    validate(args.sbom)
+    print(&quot;SPDX 2.3 JSON schema validation passed&quot;)
+
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre>
+<h4><code>scripts/requirements-sbom.txt</code></h4>
+<pre><code data-source="scripts/requirements-sbom.txt"># Optional official SPDX JSON-schema validation.
+jsonschema==4.23.0
+</code></pre>
+<h3>Recovery and expected result</h3>
+<p>A useful result is a schema-valid inventory tied to the actual release inputs, with explicit limitations. In the reference SPDX document, <code>SPDXRef-Firmware</code> carries the ELF SHA-256 and source commit; source-file records connect through <code>CONTAINS</code> relationships. A wrong firmware hash or malformed document must fail validation, not be silently omitted.</p>
+</details>
+<div class="checkpoint"><strong>Done when selected</strong><p>The SBOM is validated, associated with the firmware commit/hash, and staged for the same release. You can explain both what it inventories and what it does not prove.</p></div>
+<section class="progress-panel"><button id="complete" type="button">Mark this lab completed</button></section><p id="status" class="status" role="status" aria-live="polite"></p>
+<div class="pager"><a href="04-arm-firmware.html">&larr; Target firmware</a><a href="07-versioned-releases.html">Next: versioned release &rarr;</a></div>
+</main><footer>Optional SBOM generation precedes publication. Inventory is not vulnerability assessment or authenticity.</footer></body></html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>03 Test-only failure exercise | From Commit to Firmware</title><link rel="stylesheet" href="../assets/styles.css"><script src="../assets/workshop.js" defer></script></head>
+<body data-lab="03"><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="../index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="../prerequisites.html">Preflight</a><a href="../index.html#journey">All labs</a><a href="../troubleshooting.html">Troubleshooting</a></nav></div></header>
+<main id="main"><p class="eyebrow">03 / Required / Diagnose the evidence</p><h1>Make a test fail. Then restore it.</h1>
+<p class="lead">This is a required customer exercise, not a demonstration-only slide. Change only a test expectation on the workshop branch. Production firmware logic stays unchanged.</p>
+<h2>Purpose</h2><p>Prove that CI executes your actual tests, reports an assertion failure as a failed run, and retains enough evidence to diagnose it. Then restore the original passing behavior without weakening the test.</p>
+<h2>Starting checkpoint</h2><p>A build and a suitable deterministic test pass. Customer approval covers an intentionally red intermediate commit. The branch/PR is isolated from production delivery. Record the test's original assertion before editing it.</p>
+<h2>Customer activities: prepare the evidence</h2><ol><li>Extend your workflow to run the real test command recorded in lab 1 after the build succeeds.</li><li>Make the diagnostic report available even when tests fail, without changing the failed run's overall result.</li><li>Verify that native tests use the host compiler and that the runner does not attempt to execute a device binary.</li></ol>
+<h2>Customer activities: run the required experiment</h2><ol><li><strong>Baseline:</strong> run the test successfully and note its name, run, and commit.</li><li><strong>Test-only edit:</strong> choose a deterministic assertion from your project and make one expectation deliberately incorrect for the unchanged correct application behavior.</li><li><strong>Observe red:</strong> commit/push the approved test-only change and inspect the PR run. Confirm the test actually executes and fails with an expected/actual mismatch.</li><li><strong>Explain it:</strong> find the test name and mismatch in logs/report. Distinguish an assertion failure from a compilation, network, license, or runner failure.</li><li><strong>Restore:</strong> return the exact original correct expectation, commit/push the restoration, and confirm the test executes and passes.</li><li><strong>Review:</strong> inspect the final diff. No intentional failing assertion or manufactured production-code defect may remain before merge/release.</li></ol>
+<div class="callout"><strong>Do not manufacture green.</strong><p>No skipped/disabled tests, weakened assertions, <code>continue-on-error</code>, ignored exit codes, or production-code changes to satisfy the incorrect expectation. A forced shell failure or broken compilation does not complete this exercise.</p></div>
+<div class="activity"><strong>Customer activity: explain the boundary</strong><p>What would happen if a failed test job had a successful report-upload step? Why must artifact retention not change the overall failing result? Later, inspect the release job's dependencies and confirm it cannot publish when this test fails.</p></div>
+<details id="solution"><summary>Solution and recovery checkpoint</summary>
+<h3>Completed test workflow</h3>
+<p>The final workflow runs your existing tests and retains diagnostics without masking failures. Restore the original correct expectation in your own test after observing the intentional failure; no application test implementation is supplied or required here.</p>
+<aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. For a project at the repository root, use <code>.</code> in commands and <code>**</code> in source path filters. Also adapt include/source subdirectories, presets and output paths to your project.</p></aside>
+<h4><code>.github/workflows/02-tests.yml</code></h4>
+<aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
+<pre><code data-source="examples/workflows/02-tests.yml"># Teaching checkpoint; adapt existing customer workflows rather than overwriting them.
+# Adapt CMake toolchain/presets/paths; native tests need a host compiler.
+name: Workshop build and tests
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13
+      - name: Native build and real tests - adapt toolchain to your project
+        env:
+          CC: gcc-13
+        run: |
+          # REQUIRED: replace this placeholder with your repository-relative project path.
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+          ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: workshop-test-report
+          path: build/host/test-results.xml
+          if-no-files-found: warn
+</code></pre>
+<h3>Recovery and expected result</h3>
+<p>Two runs are required: an executed assertion fails for the intended wrong expectation, then the restored assertion executes and passes. Restore your test's original correct expectation, not the implementation. If no tests are discovered, stop and fix test registration; a “no tests found” success is not validation.</p>
+</details>
+<div class="checkpoint"><strong>Done when</strong><p>You can show the failed assertion, retained diagnostics, passing restoration, and a clean final test diff. Keep the red intermediate commit as history on the approved branch according to customer policy.</p></div>
+<section class="progress-panel"><button id="complete" type="button">Mark this lab completed</button></section><p id="status" class="status" role="status" aria-live="polite"></p>
+<div class="pager"><a href="02-first-pipeline.html">&larr; First pipeline</a><a href="04-arm-firmware.html">Next: target firmware &rarr;</a></div>
+</main><footer>The failure is intentional and test-only. Never introduce production firmware defects for this exercise.</footer></body></html>

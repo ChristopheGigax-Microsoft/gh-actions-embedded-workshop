@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Lab solutions and final pipeline | From Commit to Firmware</title><link rel="stylesheet" href="assets/styles.css"><script src="assets/workshop.js" defer></script></head>
+<body><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="index.html#journey">All labs</a><a href="workflow-examples.html">Complete code examples</a><a href="#final">Final solution</a></nav></div></header>
+<main id="main"><p class="eyebrow">Solutions / Completed checkpoints</p><h1>Your lab solutions, brought together.</h1>
+<p class="lead">Use each solution after attempting its lab. At the end, the <a href="#final">final solution index</a> brings the complete pipeline and supporting files together. Every linked code example is included in this static workshop; workshop repository access is not required.</p>
+<aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. For a project at the repository root, use <code>.</code> in commands and <code>**</code> in source path filters. Also adapt include/source subdirectories, presets and output paths to your project.</p></aside>
+<aside class="callout" data-toolchain><strong>Adapt solutions to your targeted project.</strong><p>CMake and Arm GNU are references. Use your actual compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/output paths. Keep your existing application and customer-required checks. Native tests use a host compiler, not the device compiler.</p></aside>
+<nav aria-label="Lab solutions"><a href="#lab-01">Lab 1</a><a href="#lab-02">Lab 2</a><a href="#lab-03">Lab 3</a><a href="#lab-04">Lab 4</a><a href="#lab-05">Lab 5 (optional)</a><a href="#lab-06">Lab 6 (optional)</a><a href="#lab-07">Lab 7</a><a href="#final">Final solution</a></nav>
+
+<section id="lab-01"><h2>Lab 1 solution: repeatable build</h2>
+<p>The completed checkpoint is a short set of verified command notes in OneNote or another customer-approved location. Record the working directory, environment/dependency setup, compiler/SDK versions, configure/build/test commands, host or target configuration, and output/report paths. No new script, JSON file or build configuration is required. Keep the existing project and build system; use these notes to create workflow steps in lab 2.</p>
+<div class="checkpoint"><strong>Expected result</strong><p>The recorded commands work from a clean build directory, at least one real test executes and passes, and the outputs and test report are available.</p></div></section>
+
+<section id="lab-02"><h2>Lab 2 solution: first CI workflow</h2>
+<p><a class="button" href="workflow-examples.html#first-build">Open the complete first-build YAML</a></p>
+<p>Save the adapted example under an approved <code>.github/workflows</code> filename in your existing repository. Its final state checks out the expected commit, provisions the approved host tools, and runs the same build command as lab 1 with read-only permissions. Use approved push/PR triggers if the manual workflow is not yet available on the default branch.</p>
+<p>The <a href="workflow-examples.html#ci">complete CI caller</a> shows the later reusable-workflow version. Preserve existing customer checks and adapt branch/path filters to your project.</p>
+<div class="checkpoint"><strong>Expected result</strong><p>The run builds the intended commit on the approved runner and exposes a meaningful PR check. Setup failure is not a firmware regression.</p></div>
+<p><a href="labs/02-first-pipeline.html">Return to lab 2</a></p></section>
+
+<section id="lab-03"><h2>Lab 3 solution: restored tests and retained evidence</h2>
+<p><a class="button" href="workflow-examples.html#tests">Open the complete build-and-test YAML</a></p>
+<p>The final test code must contain its <strong>original correct expectation</strong>. The deliberate wrong expectation must not remain. Do not change production logic, disable the test, weaken its assertion, or ignore its exit status.</p>
+<ol><li>The baseline test executes and passes.</li><li>The test-only intermediate change executes and fails for the intended expected/actual mismatch; diagnostics remain available.</li><li>Restoring the original expectation makes the same enabled test execute and pass again.</li></ol>
+<p>For an illustrative correct value of <code>50000</code>, the restored assertion expects <code>50000</code>, not the temporary <code>50001</code>. Use the original value from your own test, not this example value blindly.</p>
+<div class="checkpoint"><strong>Expected result</strong><p>You can show both CI runs and a final diff with no intentional failure. The completed pipeline prevents failed required tests from reaching firmware publication.</p></div>
+<p><a href="labs/03-tests-and-debugging.html">Return to lab 3</a></p></section>
+
+<section id="lab-04"><h2>Lab 4 solution: target firmware build</h2>
+<p><a class="button" href="workflow-examples.html#target-build-checkpoint">Open the lab 4 caller and firmware-build checkpoint</a></p>
+<p>This stage runs required host tests, compiles the target and retains diagnostics and target outputs. It has no quality or SBOM inputs or steps; later labs extend it before the final packaging/release workflow.</p>
+<p>Use the target-build step with your approved compiler and configuration. The <a href="workflow-examples.html#install-arm">reference installer</a>, <a href="#target-toolchain">CMake toolchain file</a>, <a href="#cmake-project">build targets</a>, and <a href="#cmake-presets">presets</a> are all included in this workshop.</p>
+<aside class="callout" data-toolchain><strong>Adapt the Arm/CMake toolchain to your targeted project.</strong><p>Replace compiler/version, architecture/ABI, SDK, startup/runtime, linker script/memory map, presets, paths and inspection tools as needed. Arm is illustrative. The target output directory must be separate from native tests.</p></aside>
+<pre><code>cmake --preset arm -S path/to/your/project
+cmake --build build/arm</code></pre>
+<div class="checkpoint"><strong>Expected result</strong><p>The real target build produces the selected firmware outputs. Reference names are <code>monitor.elf</code>, <code>monitor.bin</code> and <code>monitor.map</code>. Compilation/linking is not hardware validation or proof of bootability.</p></div>
+<p><a href="labs/04-arm-firmware.html">Return to lab 4</a></p></section>
+
+<section id="lab-05"><h2>Lab 5 solution: optional quality gates</h2>
+<p><a class="button" href="workflow-examples.html#firmware-build">Open the complete workflow with quality gates</a></p>
+<p>Enable the caller's <code>quality</code> input only if this module is selected. Its warning/analysis/coverage/size steps must fail visibly when a selected check fails. The <a href="workflow-examples.html#check-size">complete size-check helper</a> is included.</p>
+<pre><code>jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: true
+      sbom: false</code></pre>
+<p>Adapt this job into the <a href="workflow-examples.html#ci">full caller</a>; it is not a standalone workflow. To select both optional modules, set both inputs to <code>true</code>. If quality is skipped, leave its input <code>false</code> and keep required builds/tests intact.</p>
+<div class="checkpoint"><strong>Expected result when selected</strong><p>Agreed checks run, diagnostics are reviewable, and gate failures prevent publication. Size equality passes; a one-byte overrun fails. Existing customer-required checks remain required.</p></div>
+<p><a href="labs/05-quality-gates-optional.html">Return to optional lab 5</a></p></section>
+
+<section id="lab-06"><h2>Lab 6 solution: optional pre-release SBOM</h2>
+<p><a class="button" href="workflow-examples.html#firmware-build">Open the complete workflow with SBOM generation</a></p>
+<p>Enable <code>sbom</code> independently of quality gates. The complete <a href="workflow-examples.html#package-firmware">package/SBOM helper</a>, <a href="workflow-examples.html#validate-sbom">validator</a> and <a href="workflow-examples.html#sbom-requirements">requirements file</a> are included. Replace the reference inventory with approved tooling and scope for your actual dependencies.</p>
+<pre><code>jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: false
+      sbom: true</code></pre>
+<p>Adapt this job into the <a href="workflow-examples.html#ci">full caller</a>. When skipped, the workflow must not depend on a missing SBOM artifact. When selected, generation/validation failures must prevent publication.</p>
+<div class="checkpoint"><strong>Expected result when selected</strong><p>A schema-valid inventory is associated with the source commit and firmware hash, generated before publication, and included in release assets/checksums. Its scope and limitations are explicit.</p></div>
+<p><a href="labs/06-sbom-optional.html">Return to optional lab 6</a></p></section>
+
+<section id="lab-07"><h2>Lab 7 solution: completed versioned-release pipeline</h2>
+<p><a class="button" href="workflow-examples.html#release">Open the complete release YAML</a></p>
+<p>Add the release workflow to the CI/build components you created in the earlier labs; do not recreate or recopy those workflows. Confirm that the existing reusable build accepts the supplied optional-module inputs and uploads the checksummed release package for the same source commit and run. The minimal lab 4 checkpoint needs packaging/upload integration before its raw target outputs can be consumed by this release. The release then validates its tag, runs required checks and selected optional modules, and publishes the exact validated package without rebuilding.</p>
+<p>The publisher downloads <code>firmware-&lt;source SHA&gt;</code> from the same run, verifies its checksums and clean source identity, and creates an approved workshop prerelease. It must not publish after failed required tests or overwrite an existing release. Select the safe tag namespace and optional-module settings before creating the tag; the full example explains the tag-push and manual-dispatch routes.</p>
+<div class="checkpoint"><strong>Expected final assets</strong><p>Target firmware files, linker map where applicable, <code>manifest.json</code> and <code>SHA256SUMS</code>; add <code>sbom.spdx.json</code> only when selected. The package is traceable but not deployed or hardware-validated.</p></div>
+<p><a href="#final">View the complete final solution index</a> &middot; <a href="labs/07-versioned-releases.html">Return to lab 7</a></p></section>
+
+<section id="final"><h2>Final solution: all files in one place</h2>
+<p>This is the cumulative solution after the required labs. Every link opens complete code inside this static workshop, not the workshop repository. Keep your existing application, tests, startup and memory layout; use the reference configuration only to compare structure and adapt it to your project.</p>
+<div class="table-wrap"><table><thead><tr><th>Destination in your project</th><th>Complete solution</th><th>Required?</th></tr></thead><tbody>
+<tr><td><code>.github/workflows/ci.yml</code></td><td><a href="workflow-examples.html#ci">CI caller YAML</a></td><td>Core</td></tr>
+<tr><td><code>.github/workflows/firmware-build.yml</code></td><td><a href="workflow-examples.html#firmware-build">Reusable build/test/package YAML</a></td><td>Core, with optional modules off by default</td></tr>
+<tr><td><code>.github/workflows/release.yml</code></td><td><a href="workflow-examples.html#release">Versioned-release YAML</a></td><td>Core, subject to customer publication policy</td></tr>
+<tr><td><code>scripts/install_arm.py</code> or approved equivalent</td><td><a href="workflow-examples.html#install-arm">Reference target compiler setup</a></td><td>Adapt to the targeted project</td></tr>
+<tr><td><code>scripts/package_firmware.py</code> or equivalent</td><td><a href="workflow-examples.html#package-firmware">Package and checksum verification</a></td><td>Core; adapt paths, target identity and inventory</td></tr>
+<tr><td><code>scripts/check_size.py</code> or equivalent</td><td><a href="workflow-examples.html#check-size">Size-budget helper</a></td><td>Optional quality module</td></tr>
+<tr><td><code>scripts/validate_sbom.py</code> and requirements</td><td><a href="workflow-examples.html#validate-sbom">SBOM validator</a> and <a href="workflow-examples.html#sbom-requirements">requirements</a></td><td>Optional SBOM module</td></tr>
+<tr><td>Existing build-system files</td><td><a href="#cmake-project">CMakeLists.txt</a>, <a href="#cmake-presets">presets</a>, <a href="#target-toolchain">target toolchain</a></td><td>Reference structure; keep/adapt your existing configuration</td></tr>
+</tbody></table></div>
+<p>Keep generated <code>build</code>, <code>dist</code>, <code>.tools</code> and <code>.venv</code> directories ignored by Git. If SBOM generation is selected, include its validator and requirements alongside the package helper, or replace these consistently with your approved project tooling. If SBOM is skipped, its tools and artifacts are not required.</p>
+<p><strong>Final review:</strong> original test expectations restored; required tests execute and pass; selected optional modules succeed; package checksums/source identity match; customer release policy is respected. A published release is continuous delivery, not proof of device deployment.</p>
+<p><a class="button" href="workflow-examples.html">Open all complete workflow and script code</a></p></section>
+
+<section id="build-configuration"><h2>Completed reference build configuration</h2><p>The following files show the final native/target split used in the examples. Their application paths describe the reference structure; map them to your existing project's sources and target configuration. They are not a replacement for your board support or application code.</p>
+<h3 id="cmake-project">CMakeLists.txt</h3>
+<aside class="callout" data-toolchain><strong>Adapt this CMake configuration to your targeted project.</strong><p>Change compiler/SDK, architecture/ABI flags, source and output names, startup files, linker script and memory map. Use the actual host compiler for tests; Cortex-M3 flags are reference-only. Do not copy the target settings unchanged unless they match your hardware.</p></aside>
+<pre><code data-source="samples/reference-firmware/CMakeLists.txt">cmake_minimum_required(VERSION 3.25)
+project(workshop_monitor VERSION 1.0.0 LANGUAGES C)
+
+option(BUILD_FIRMWARE &quot;Build the reference Arm image instead of host tests&quot; OFF)
+option(QUALITY_GATES &quot;Enable extra warnings and native coverage&quot; OFF)
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
+add_library(monitor STATIC src/monitor.c)
+target_include_directories(monitor PUBLIC include)
+
+if(QUALITY_GATES)
+  if(NOT CMAKE_C_COMPILER_ID STREQUAL &quot;GNU&quot;)
+    message(FATAL_ERROR &quot;The reference quality preset requires native GCC/gcov; adapt it for your compiler.&quot;)
+  endif()
+  target_compile_options(monitor PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  if(NOT BUILD_FIRMWARE)
+    target_compile_options(monitor PUBLIC --coverage -O0 -g)
+    target_link_options(monitor PUBLIC --coverage)
+  endif()
+endif()
+
+if(BUILD_FIRMWARE)
+  enable_language(ASM)
+  add_executable(firmware platform/startup.S platform/main.c)
+  target_link_libraries(firmware PRIVATE monitor)
+  target_compile_options(monitor PRIVATE -mcpu=cortex-m3 -mthumb -ffreestanding -fno-builtin -ffunction-sections -fdata-sections -Os)
+  target_compile_options(firmware PRIVATE -mcpu=cortex-m3 -mthumb -ffreestanding -fno-builtin -ffunction-sections -fdata-sections -Os)
+  target_link_options(firmware PRIVATE
+    -mcpu=cortex-m3 -mthumb -nostdlib
+    &quot;-T${CMAKE_CURRENT_SOURCE_DIR}/platform/memory.ld&quot;
+    &quot;-Wl,-Map=${CMAKE_BINARY_DIR}/monitor.map&quot;
+    -Wl,--gc-sections -Wl,--build-id=none)
+  set_target_properties(firmware PROPERTIES OUTPUT_NAME monitor SUFFIX .elf
+    LINK_DEPENDS &quot;${CMAKE_CURRENT_SOURCE_DIR}/platform/memory.ld&quot;)
+  add_custom_command(TARGET firmware POST_BUILD
+    COMMAND &quot;${CMAKE_OBJCOPY}&quot; -O binary &quot;$&lt;TARGET_FILE:firmware&gt;&quot; &quot;${CMAKE_BINARY_DIR}/monitor.bin&quot;
+    COMMAND &quot;${CMAKE_SIZE}&quot; &quot;$&lt;TARGET_FILE:firmware&gt;&quot;
+    BYPRODUCTS &quot;${CMAKE_BINARY_DIR}/monitor.bin&quot;
+    VERBATIM)
+else()
+  enable_testing()
+  add_executable(test_monitor tests/test_monitor.c)
+  target_link_libraries(test_monitor PRIVATE monitor)
+  if(QUALITY_GATES)
+    target_compile_options(test_monitor PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
+  add_test(NAME monitor_logic COMMAND test_monitor)
+endif()
+</code></pre>
+<h3 id="cmake-presets">CMakePresets.json</h3>
+<aside class="callout" data-toolchain><strong>Adapt presets and toolchain paths to your project.</strong><p>The relative output directories below assume the reference source layout. Change them, along with compiler/SDK and target flags, startup/linker settings and preset selection, for your targeted project. Keep host and target builds separate.</p></aside>
+<pre><code data-source="samples/reference-firmware/CMakePresets.json">{
+  &quot;version&quot;: 6,
+  &quot;configurePresets&quot;: [
+    {
+      &quot;name&quot;: &quot;host&quot;,
+      &quot;displayName&quot;: &quot;Native tests - adapt host compiler to your environment&quot;,
+      &quot;generator&quot;: &quot;Ninja&quot;,
+      &quot;binaryDir&quot;: &quot;${sourceDir}/../../build/host&quot;,
+      &quot;cacheVariables&quot;: { &quot;CMAKE_BUILD_TYPE&quot;: &quot;Debug&quot; }
+    },
+    {
+      &quot;name&quot;: &quot;host-quality&quot;,
+      &quot;inherits&quot;: &quot;host&quot;,
+      &quot;displayName&quot;: &quot;Optional native GCC quality gates&quot;,
+      &quot;binaryDir&quot;: &quot;${sourceDir}/../../build/quality&quot;,
+      &quot;cacheVariables&quot;: { &quot;QUALITY_GATES&quot;: &quot;ON&quot; }
+    },
+    {
+      &quot;name&quot;: &quot;arm&quot;,
+      &quot;displayName&quot;: &quot;Sample Cortex-M3 only - adapt toolchain to your target project&quot;,
+      &quot;generator&quot;: &quot;Ninja&quot;,
+      &quot;binaryDir&quot;: &quot;${sourceDir}/../../build/arm&quot;,
+      &quot;toolchainFile&quot;: &quot;${sourceDir}/cmake/arm-gcc.cmake&quot;,
+      &quot;cacheVariables&quot;: { &quot;CMAKE_BUILD_TYPE&quot;: &quot;MinSizeRel&quot;, &quot;BUILD_FIRMWARE&quot;: &quot;ON&quot; }
+    }
+  ]
+}
+</code></pre>
+<h3 id="target-toolchain">cmake/arm-gcc.cmake</h3>
+<aside class="callout" data-toolchain><strong>Replace this Arm toolchain with the one required by your targeted project.</strong><p>Compiler selection is only one part of the target: adapt SDK/sysroot, CPU/ABI/FPU flags, startup/runtime, linker map, presets and artifact tools too. For a non-Arm project, use the actual target compiler rather than renaming these executables blindly.</p></aside>
+<pre><code data-source="samples/reference-firmware/cmake/arm-gcc.cmake"># Reference only: adapt compiler/SDK, CPU/ABI, startup and linker map to your target.
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR arm)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+find_program(CMAKE_C_COMPILER arm-none-eabi-gcc REQUIRED)
+find_program(CMAKE_ASM_COMPILER arm-none-eabi-gcc REQUIRED)
+find_program(CMAKE_OBJCOPY arm-none-eabi-objcopy REQUIRED)
+find_program(CMAKE_SIZE arm-none-eabi-size REQUIRED)
+</code></pre></section>
+
+<p id="status" class="status" role="status" aria-live="polite"></p>
+<div class="pager"><a href="index.html#journey">&larr; Learning journey</a><a href="#final">Final solution index</a><a href="deployment-concepts.html">From release to device &rarr;</a></div>
+</main><footer>Solutions are reference implementations. Adapt them to your existing project and approved toolchain.</footer></body></html>

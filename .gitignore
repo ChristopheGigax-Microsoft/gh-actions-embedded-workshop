@@ -1,0 +1,7 @@
+build/
+.tools/
+.venv/
+__pycache__/
+*.pyc
+dist/
+coverage/

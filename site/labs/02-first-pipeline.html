@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>02 First CI pipeline | From Commit to Firmware</title><link rel="stylesheet" href="../assets/styles.css"><script src="../assets/workshop.js" defer></script></head>
+<body data-lab="02"><a class="skip" href="#main">Skip to content</a><header><div class="bar"><a class="brand" href="../index.html">From Commit to Firmware</a><nav aria-label="Main"><a href="../prerequisites.html">Preflight</a><a href="../index.html#journey">All labs</a><a href="../troubleshooting.html">Troubleshooting</a></nav></div></header>
+<main id="main"><p class="eyebrow">02 / Required / Continuous integration</p><h1>Move the build into CI.</h1>
+<p class="lead">Run your verified local build on an approved GitHub Actions runner and make its result visible during code review.</p>
+<h2>Purpose</h2><p>Turn the command notes from lab 1 into a repeatable CI check for the intended commit, while preserving existing customer checks and production behavior.</p>
+<h2>Starting checkpoint</h2><p>Lab 1's command map is working. Review existing customer workflows before adding a new file. Preserve existing mandatory checks and production behavior.</p>
+<h2>Customer activities: automate your baseline</h2><ol><li>Choose an approved workflow path and runner that can access your project's compiler, dependencies and licenses.</li><li>Create or extend a workflow to check out the intended commit, prepare the environment and execute the build commands recorded in lab 1.</li><li>Configure an approved trigger for your workshop branch. If you choose manual dispatch, verify that the workflow is available on the default branch; otherwise use approved scoped push/PR events.</li><li>Use your actual source and output paths, and compare the runner's configuration with the successful local baseline.</li><li>Connect the workflow to the workshop PR without changing organization protection rules or production tag triggers.</li></ol>
+<div class="activity"><strong>Customer activity: read the run</strong><ol><li>Trigger the workflow on your workshop change and open its Actions run.</li><li>Locate the runner OS, compiler setup, source checkout, and build step.</li><li>Compare actual commands and paths to the successful local baseline.</li><li>Open the workshop PR and find its check status. Determine which existing checks still apply.</li></ol></div>
+<h2>Permissions and trust</h2><p>Start with a read-only token. Pin reviewed action revisions, not a moving branch. Never run untrusted pull-request code on a device-connected self-hosted runner. An environment approval does not make a persistent runner isolated.</p>
+<details id="solution"><summary>Solution and recovery checkpoint</summary>
+<h3>Completed first-build workflow</h3>
+<p>Save or merge this checkpoint into an approved workflow path in your existing repository. It starts with a manual event; add approved workshop-branch push/PR triggers as described in the exercise. Provisioning and build commands must match your environment.</p>
+<aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. For a project at the repository root, use <code>.</code> in commands and <code>**</code> in source path filters. Also adapt include/source subdirectories, presets and output paths to your project.</p></aside>
+<p>GitHub exposes a manual workflow in the Actions UI after the workflow exists on the default branch. For a workshop-branch-only file, add approved scoped push/PR events and push a commit to trigger it instead of assuming the Run workflow button will exist.</p>
+<h4><code>.github/workflows/01-first-ci.yml</code></h4>
+<aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
+<pre><code data-source="examples/workflows/01-first-ci.yml"># Teaching checkpoint; copy/adapt into your CUSTOMER repository after reviewing existing workflows.
+# Adapt CMake compiler/SDK, presets, runner and paths to your target project.
+# REQUIRED: replace path/to/your/project with your repository-relative source path.
+name: Workshop first build
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-13
+      - name: Reference native build - adapt host compiler and CMake paths
+        env:
+          CC: gcc-13
+        run: |
+          cmake --preset host -S path/to/your/project
+          cmake --build build/host
+</code></pre>
+<h3>Recovery and expected result</h3>
+<p>A successful run checks out the expected commit, installs/locates the approved compiler, and invokes the recorded project build. Runner setup failure is not a firmware regression. If a workflow never starts, compare the event, branch, path filters, and default-branch dispatch rule before changing code.</p>
+</details>
+<div class="checkpoint"><strong>Done when</strong><p>The customer project's build passes in Actions and the PR exposes meaningful status. Record the run/commit identity; a green check from a different commit is not your evidence.</p></div>
+<section class="progress-panel"><button id="complete" type="button">Mark this lab completed</button></section><p id="status" class="status" role="status" aria-live="polite"></p>
+<div class="pager"><a href="01-local-build.html">&larr; Repeatable build</a><a href="03-tests-and-debugging.html">Next: red to green &rarr;</a></div>
+</main><footer>Keep workflow edits within approved customer branches, permissions, and runner policies.</footer></body></html>

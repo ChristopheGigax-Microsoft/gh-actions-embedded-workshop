@@ -1,0 +1,73 @@
+name: Firmware release
+on:
+  push:
+    tags: ['workshop-v*']
+  workflow_dispatch:
+    inputs:
+      quality:
+        description: Enable optional quality gates
+        type: boolean
+        default: false
+      sbom:
+        description: Generate optional SBOM before publishing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require an existing workshop version tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          if os.environ["REF_TYPE"] != "tag" or not re.fullmatch(r"workshop-v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", os.environ["REF_NAME"]):
+              raise SystemExit("Select an existing workshop-vMAJOR.MINOR.PATCH tag, not a branch.")
+          PY
+  validate:
+    needs: tag
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: ${{ inputs.quality == true }}
+      sbom: ${{ inputs.sbom == true }}
+  publish:
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: release-assets
+      - name: Verify package identity and checksums without rebuilding
+        run: |
+          python3 scripts/package_firmware.py --verify release-assets
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          manifest = json.loads(Path("release-assets/manifest.json").read_text())
+          head = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          if manifest["dirty"] or manifest["commit"] != head:
+              raise SystemExit("Release package is dirty or does not match the tagged commit.")
+          PY
+      - name: Publish immutable workshop prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" release-assets/* --verify-tag --prerelease --title "$TAG" --notes "Workshop firmware delivery only. Not hardware-validated or deployed. Checksums and source/toolchain identity are included."
