@@ -14,7 +14,7 @@
 <p>The completed caller and reusable workflow expose the quality option. For this exercise, manually dispatch Firmware CI with quality enabled; leave SBOM disabled unless selected independently. The reference defaults remain off. The complete size helper is included; the other build/package helpers from lab 4 are unchanged. Existing customer checks remain required.</p>
 <aside class="callout" data-project-path><strong>Set your own project path.</strong><p><code>path/to/your/project</code> is a placeholder for your existing project directory, relative to the repository root. Replace it in commands, workflow path filters and helper configuration before use; do not create a directory with that literal name. For a project at the repository root, use <code>.</code> in commands and <code>**</code> in source path filters. Also adapt include/source subdirectories, presets and output paths to your project.</p></aside>
 <h4><code>.github/workflows/ci.yml</code></h4>
-<pre><code data-source=".github/workflows/ci.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+<pre><code data-source="examples/workflows/04-full-ci.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
 # If the project is at the repository root, use &#x27;**&#x27; for its path filter.
 name: Firmware CI
 on:
@@ -52,7 +52,7 @@ jobs:
 </code></pre>
 <h4><code>.github/workflows/firmware-build.yml</code></h4>
 <aside class="callout" data-toolchain><strong>Adapt the toolchain to your targeted project.</strong><p>Change compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner and source/build/artifact paths as applicable. Native tests use a host compiler. Arm and the sample paths are references, not required customer settings.</p></aside>
-<pre><code data-source=".github/workflows/firmware-build.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+<pre><code data-source="examples/workflows/04-full-build.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
 # Adapt presets, include/source directories, output paths and tools to that project.
 name: Reusable firmware build
 on:

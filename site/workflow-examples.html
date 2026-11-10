@@ -164,7 +164,7 @@ jobs:
 </section>
 
 <section id="ci"><h2>4. Final CI caller</h2><p>Save as <code>.github/workflows/ci.yml</code>, or merge into the existing caller. Copy the <a href="#firmware-build">reusable workflow</a> into the same customer repository too. Adapt branch and path filters to the customer's existing project.</p>
-<pre><code data-source=".github/workflows/ci.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+<pre><code data-source="examples/workflows/04-full-ci.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
 # If the project is at the repository root, use &#x27;**&#x27; for its path filter.
 name: Firmware CI
 on:
@@ -203,7 +203,7 @@ jobs:
 
 <section id="firmware-build"><h2>5. Final reusable firmware build</h2><p>Save as <code>.github/workflows/firmware-build.yml</code>. Both the CI and release callers use this file from <strong>your repository</strong>, not from the workshop repository. Required builds/tests run first; quality gates and SBOM are independent opt-ins before packaging. Supporting scripts are provided <a href="#supporting-files">below</a>.</p>
 <aside class="callout" data-toolchain><strong>Adapt every CMake/Arm build step to your targeted project.</strong><p>Replace the compiler/version, SDK, target CPU/ABI flags, startup/linker configuration, presets, runner, source/build/artifact paths, analysis tools and thresholds. Native tests use a host compiler. Arm is illustrative, not the required customer target.</p></aside>
-<pre><code data-source=".github/workflows/firmware-build.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
+<pre><code data-source="examples/workflows/04-full-build.yml"># REQUIRED: replace path/to/your/project with your repository-relative source path.
 # Adapt presets, include/source directories, output paths and tools to that project.
 name: Reusable firmware build
 on:
@@ -589,15 +589,16 @@ def require_passing_tests(path):
         raise ValueError(&quot;Failed, errored or skipped tests prevent firmware packaging&quot;)
 
 
-def make_sbom(commit, elf_sha, created):
+def make_sbom(commit, elf_sha, created, source=None):
+    source = SOURCE if source is None else source
     files = []
     for number, name in enumerate(INVENTORY, 1):
         files.append({
             &quot;SPDXID&quot;: f&quot;SPDXRef-File-{number}&quot;,
             &quot;fileName&quot;: f&quot;./{name}&quot;,
             &quot;checksums&quot;: [
-                {&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: sha256(SOURCE / name)},
-                {&quot;algorithm&quot;: &quot;SHA1&quot;, &quot;checksumValue&quot;: hashlib.sha1((SOURCE / name).read_bytes()).hexdigest()},
+                {&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: sha256(source / name)},
+                {&quot;algorithm&quot;: &quot;SHA1&quot;, &quot;checksumValue&quot;: hashlib.sha1((source / name).read_bytes()).hexdigest()},
             ],
             &quot;licenseConcluded&quot;: &quot;NOASSERTION&quot;,
             &quot;copyrightText&quot;: &quot;NOASSERTION&quot;,
@@ -618,7 +619,7 @@ def make_sbom(commit, elf_sha, created):
             &quot;filesAnalyzed&quot;: True,
             &quot;packageVerificationCode&quot;: {
                 &quot;packageVerificationCodeValue&quot;: hashlib.sha1(
-                    &quot;&quot;.join(sorted(hashlib.sha1((SOURCE / name).read_bytes()).hexdigest()
+                    &quot;&quot;.join(sorted(hashlib.sha1((source / name).read_bytes()).hexdigest()
                                    for name in INVENTORY)).encode(&quot;ascii&quot;)
                 ).hexdigest()
             },
@@ -672,6 +673,8 @@ def verify_package(directory):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(&quot;--sbom&quot;, action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--source&quot;, type=Path, default=SOURCE,
+                        help=&quot;Reference source directory for the optional SBOM inventory&quot;)
     parser.add_argument(&quot;--test-report&quot;, type=Path, default=ROOT / &quot;build/host/test-results.xml&quot;)
     parser.add_argument(&quot;--verify&quot;, type=Path)
     args = parser.parse_args()
@@ -702,7 +705,8 @@ def main():
         if args.sbom:
             from validate_sbom import check_identity, validate
             sbom_path = staging / &quot;sbom.spdx.json&quot;
-            sbom_path.write_text(json.dumps(make_sbom(commit, firmware[&quot;monitor.elf&quot;], created), indent=2) + &quot;\n&quot;,
+            source = (ROOT / args.source).resolve()
+            sbom_path.write_text(json.dumps(make_sbom(commit, firmware[&quot;monitor.elf&quot;], created, source), indent=2) + &quot;\n&quot;,
                                  encoding=&quot;utf-8&quot;)
             check_identity(validate(sbom_path), commit, firmware[&quot;monitor.elf&quot;])
         sums = &quot;&quot;.join(f&quot;{sha256(path)}  {path.name}\n&quot; for path in sorted(staging.iterdir()))

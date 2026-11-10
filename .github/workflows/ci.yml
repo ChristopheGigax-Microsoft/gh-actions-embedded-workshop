@@ -1,18 +1,24 @@
-# REQUIRED: replace path/to/your/project with your repository-relative source path.
-# If the project is at the repository root, use '**' for its path filter.
 name: Firmware CI
 on:
   pull_request:
     paths:
-      - 'path/to/your/project/**'
+      - 'samples/reference-firmware/**'
       - 'scripts/**'
       - '.github/workflows/**'
+      - 'tests/**'
+      - 'examples/**'
+      - 'site/**'
+      - 'README.md'
   push:
-    branches: ['workshop/**']
+    branches: ['main', 'workshop/**']
     paths:
-      - 'path/to/your/project/**'
+      - 'samples/reference-firmware/**'
       - 'scripts/**'
       - '.github/workflows/**'
+      - 'tests/**'
+      - 'examples/**'
+      - 'site/**'
+      - 'README.md'
   workflow_dispatch:
     inputs:
       quality:

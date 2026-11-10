@@ -1,0 +1,35 @@
+# REQUIRED: replace path/to/your/project with your repository-relative source path.
+# If the project is at the repository root, use '**' for its path filter.
+name: Firmware CI
+on:
+  pull_request:
+    paths:
+      - 'path/to/your/project/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  push:
+    branches: ['workshop/**']
+    paths:
+      - 'path/to/your/project/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      quality:
+        description: Enable optional quality gates
+        type: boolean
+        default: false
+      sbom:
+        description: Generate an optional pre-release SPDX SBOM
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    uses: ./.github/workflows/firmware-build.yml
+    with:
+      quality: ${{ inputs.quality == true }}
+      sbom: ${{ inputs.sbom == true }}

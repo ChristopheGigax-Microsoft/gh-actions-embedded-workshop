@@ -362,15 +362,16 @@ def require_passing_tests(path):
         raise ValueError(&quot;Failed, errored or skipped tests prevent firmware packaging&quot;)
 
 
-def make_sbom(commit, elf_sha, created):
+def make_sbom(commit, elf_sha, created, source=None):
+    source = SOURCE if source is None else source
     files = []
     for number, name in enumerate(INVENTORY, 1):
         files.append({
             &quot;SPDXID&quot;: f&quot;SPDXRef-File-{number}&quot;,
             &quot;fileName&quot;: f&quot;./{name}&quot;,
             &quot;checksums&quot;: [
-                {&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: sha256(SOURCE / name)},
-                {&quot;algorithm&quot;: &quot;SHA1&quot;, &quot;checksumValue&quot;: hashlib.sha1((SOURCE / name).read_bytes()).hexdigest()},
+                {&quot;algorithm&quot;: &quot;SHA256&quot;, &quot;checksumValue&quot;: sha256(source / name)},
+                {&quot;algorithm&quot;: &quot;SHA1&quot;, &quot;checksumValue&quot;: hashlib.sha1((source / name).read_bytes()).hexdigest()},
             ],
             &quot;licenseConcluded&quot;: &quot;NOASSERTION&quot;,
             &quot;copyrightText&quot;: &quot;NOASSERTION&quot;,
@@ -391,7 +392,7 @@ def make_sbom(commit, elf_sha, created):
             &quot;filesAnalyzed&quot;: True,
             &quot;packageVerificationCode&quot;: {
                 &quot;packageVerificationCodeValue&quot;: hashlib.sha1(
-                    &quot;&quot;.join(sorted(hashlib.sha1((SOURCE / name).read_bytes()).hexdigest()
+                    &quot;&quot;.join(sorted(hashlib.sha1((source / name).read_bytes()).hexdigest()
                                    for name in INVENTORY)).encode(&quot;ascii&quot;)
                 ).hexdigest()
             },
@@ -445,6 +446,8 @@ def verify_package(directory):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(&quot;--sbom&quot;, action=&quot;store_true&quot;)
+    parser.add_argument(&quot;--source&quot;, type=Path, default=SOURCE,
+                        help=&quot;Reference source directory for the optional SBOM inventory&quot;)
     parser.add_argument(&quot;--test-report&quot;, type=Path, default=ROOT / &quot;build/host/test-results.xml&quot;)
     parser.add_argument(&quot;--verify&quot;, type=Path)
     args = parser.parse_args()
@@ -475,7 +478,8 @@ def main():
         if args.sbom:
             from validate_sbom import check_identity, validate
             sbom_path = staging / &quot;sbom.spdx.json&quot;
-            sbom_path.write_text(json.dumps(make_sbom(commit, firmware[&quot;monitor.elf&quot;], created), indent=2) + &quot;\n&quot;,
+            source = (ROOT / args.source).resolve()
+            sbom_path.write_text(json.dumps(make_sbom(commit, firmware[&quot;monitor.elf&quot;], created, source), indent=2) + &quot;\n&quot;,
                                  encoding=&quot;utf-8&quot;)
             check_identity(validate(sbom_path), commit, firmware[&quot;monitor.elf&quot;])
         sums = &quot;&quot;.join(f&quot;{sha256(path)}  {path.name}\n&quot; for path in sorted(staging.iterdir()))

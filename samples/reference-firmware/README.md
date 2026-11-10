@@ -18,12 +18,12 @@ and verifies a checked-in digest before extraction. It prints the compiler's
 `bin` directory; add it to your PATH. Installation lives in `.tools`, not a system
 directory. A working CMake >= 3.25, Ninja, and native C compiler are prerequisites.
 
-Replace `path/to/your/project` in commands, workflow filters and the package
-helper's `SOURCE` setting with your repository-relative project directory.
-For this separate reference project, that is the directory containing this README.
-For a root-level customer project, use `.` in commands and `**` in workflow
-source path filters. Also adapt include/source subdirectories and output paths;
-do not create a directory with the literal placeholder name.
+The commands below and active workflows already select this reference project.
+Customer-facing site snippets instead use `path/to/your/project`; replace it
+with the customer's repository-relative directory. For a root-level customer
+project, use `.` in commands and `**` in workflow source path filters. Also adapt
+include/source subdirectories and output paths; do not create a directory with
+the literal placeholder name.
 
 On the reference Ubuntu environment:
 
@@ -47,14 +47,14 @@ device compiler. Use a fresh build directory when changing compilers/toolchains.
 The portable repository-root commands used by CI are:
 
 ```sh
-cmake --preset host -S path/to/your/project
+cmake --preset host -S samples/reference-firmware
 cmake --build build/host
-ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+ctest --test-dir build/host --no-tests=error --output-on-failure --output-junit test-results.xml
 ```
 
 ## Required red-to-green exercise
 
-First obtain a passing native run. In `path/to/your/project/tests/test_monitor.c`,
+First obtain a passing native run. In `samples/reference-firmware/tests/test_monitor.c`,
 temporarily change only `EXPECTED_MIDPOINT_MC` from `50000` to `50001`. Build and
 run the same tests: the midpoint assertion must fail with expected/actual values.
 Restore `50000`, build, and confirm the test executes and passes. In a personal
@@ -72,7 +72,7 @@ This fixture models a Cortex-M3 memory map with 128 KiB flash at `0x08000000` an
 20 KiB RAM at `0x20000000`. It is not a certified board support package.
 
 ```sh
-cmake --preset arm -S path/to/your/project
+cmake --preset arm -S samples/reference-firmware
 cmake --build build/arm
 arm-none-eabi-size build/arm/monitor.elf
 ```
@@ -92,11 +92,11 @@ Install customer-approved analysis tools; the reference uses `cppcheck` and
 firmware size uses the selected device toolchain's size utility.
 
 ```sh
-cmake --preset host-quality -S path/to/your/project
+cmake --preset host-quality -S samples/reference-firmware
 cmake --build build/quality
-ctest --test-dir build/quality --output-on-failure --output-junit test-results.xml
-cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I path/to/your/project/include path/to/your/project/src
-gcovr --root . --filter path/to/your/project/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
+ctest --test-dir build/quality --no-tests=error --output-on-failure --output-junit test-results.xml
+cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I samples/reference-firmware/include samples/reference-firmware/src
+gcovr --root . --filter samples/reference-firmware/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
 python3 scripts/check_size.py build/arm/monitor.elf --flash 16384 --ram 4096
 ```
 
@@ -121,11 +121,12 @@ substitute an approved dependency-aware generator with a documented inventory sc
 
 ```sh
 python3 -m pip install -r scripts/requirements-sbom.txt
-python3 scripts/package_firmware.py --sbom
+python3 scripts/package_firmware.py --source samples/reference-firmware --sbom
 python3 scripts/validate_sbom.py dist/firmware/sbom.spdx.json
 ```
 
-Without SBOM tooling, use `python3 scripts/package_firmware.py`. Both paths write
+Without SBOM tooling, use
+`python3 scripts/package_firmware.py --source samples/reference-firmware`. Both paths write
 ELF/BIN/map, build manifest, and `SHA256SUMS` to `dist/firmware`. The optional SBOM
 is generated before publication, validated, associated with the source commit
 and ELF hash, and checksummed with the other files. The generator does not claim

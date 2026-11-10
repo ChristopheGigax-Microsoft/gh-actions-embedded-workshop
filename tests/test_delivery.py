@@ -47,6 +47,14 @@ class TestEvidenceTests(unittest.TestCase):
 
 @patch("package_firmware.SOURCE", Path(__file__).resolve().parents[1] / "samples" / "reference-firmware")
 class InventoryTests(unittest.TestCase):
+    def test_explicit_source_overrides_customer_placeholder(self):
+        source = Path(__file__).resolve().parents[1] / "samples" / "reference-firmware"
+        with patch("package_firmware.SOURCE", source / "missing"):
+            document = make_sbom("a" * 40, "b" * 64, "2026-01-01T00:00:00Z", source)
+        check_identity(document, "a" * 40, "b" * 64)
+        self.assertEqual(document["files"][0]["checksums"][0]["checksumValue"],
+                         hashlib.sha256((source / "src/monitor.c").read_bytes()).hexdigest())
+
     def test_identity_relationships_and_unknown_licenses(self):
         document = make_sbom("a" * 40, "b" * 64, "2026-01-01T00:00:00Z")
         check_identity(document, "a" * 40, "b" * 64)

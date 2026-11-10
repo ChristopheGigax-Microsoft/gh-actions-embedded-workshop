@@ -173,11 +173,11 @@ class StaticSiteTests(unittest.TestCase):
     def test_complete_workflows_and_helpers_are_embedded_without_drift(self):
         examples = self.pages[(SITE / "workflow-examples.html").resolve()].embedded_sources
         expected = set()
-        for folder, pattern in ((".github/workflows", "*.yml"),
-                                ("examples/workflows", "*.yml"),
+        for folder, pattern in (("examples/workflows", "*.yml"),
                                 ("scripts", "*.py"),
                                 ("scripts", "requirements-sbom.txt")):
             expected.update(path.relative_to(ROOT).as_posix() for path in (ROOT / folder).glob(pattern))
+        expected.add(".github/workflows/release.yml")
         self.assertEqual(set(examples), expected)
         for source, code in examples.items():
             with self.subTest(source=source):
@@ -197,8 +197,8 @@ class StaticSiteTests(unittest.TestCase):
                 ))
 
     def test_each_lab_solution_checkpoint_contains_its_completed_solution(self):
-        build = ".github/workflows/firmware-build.yml"
-        caller = ".github/workflows/ci.yml"
+        build = "examples/workflows/04-full-build.yml"
+        caller = "examples/workflows/04-full-ci.yml"
         required_sources = {
             "01": set(),
             "02": {"examples/workflows/01-first-ci.yml"},
@@ -227,14 +227,14 @@ class StaticSiteTests(unittest.TestCase):
 
     def test_project_paths_are_explicit_customer_placeholders(self):
         placeholder = "path/to/your/project"
-        for folder in (ROOT / ".github" / "workflows", ROOT / "examples" / "workflows"):
+        for folder in (ROOT / "examples" / "workflows",):
             for path in folder.glob("*.yml"):
                 if path.name != "release.yml":
                     text = path.read_text(encoding="utf-8")
                     self.assertIn(placeholder, text)
                     self.assertIn("replace", text.lower())
                     self.assertNotIn("samples/", text)
-        ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        ci = (ROOT / "examples" / "workflows" / "04-full-ci.yml").read_text(encoding="utf-8")
         self.assertIn(f"'{placeholder}/**'", ci)
         package = (ROOT / "scripts" / "package_firmware.py").read_text(encoding="utf-8")
         self.assertIn(f'SOURCE = ROOT / "{placeholder}"', package)
@@ -369,8 +369,8 @@ class StaticSiteTests(unittest.TestCase):
             ".github/workflows/release.yml", "scripts/package_firmware.py", "scripts/validate_sbom.py",
         })
         prior_lab = self.pages[(SITE / "labs/05-quality-gates-optional.html").resolve()]
-        self.assertIn(".github/workflows/ci.yml", prior_lab.solution_sources)
-        self.assertIn(".github/workflows/firmware-build.yml", prior_lab.solution_sources)
+        self.assertIn("examples/workflows/04-full-ci.yml", prior_lab.solution_sources)
+        self.assertIn("examples/workflows/04-full-build.yml", prior_lab.solution_sources)
         self.assertNotIn("solutions.html#final", conclusion.links)
         self.assertIn("included directly in lab 7", " ".join(conclusion.prose))
         solution = self.pages[(SITE / "solutions.html").resolve()]
@@ -432,6 +432,5 @@ class StaticSiteTests(unittest.TestCase):
         self.assertEqual(names, {"ci.yml", "firmware-build.yml", "release.yml"})
         for path in (ROOT / ".github/workflows").glob("*.yml"):
             text = path.read_text(encoding="utf-8").lower()
-            self.assertNotIn("site/", text)
             self.assertNotIn("deploy-pages", text)
             self.assertNotIn("vibehub", text)

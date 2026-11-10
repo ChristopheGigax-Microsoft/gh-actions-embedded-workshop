@@ -31,7 +31,7 @@ a separate simple C project using CMake and ARM GCC.
 
 Lab 4 uses a build/test/artifact-only checkpoint from `examples/workflows`;
 it does not introduce quality or SBOM inputs or steps. Later labs extend it,
-and the final combined workflow files remain under `.github/workflows`.
+and the final combined customer templates remain under `examples/workflows`.
 
 **Adapt to your target project:** CMake and Arm GNU are reference examples. For
 every build example, use the compiler/version, architecture, SDK, CPU/ABI flags,
@@ -53,18 +53,45 @@ before the versioned release. Builds and tests remain required.
 
 [The reference C project](samples/reference-firmware/README.md) accompanies the
 examples; workshop participants use their existing project and environment.
-The three active workflow files are embedded-pipeline templates; configure the
-project-path placeholder and project-specific tools before running them:
+The three active workflow files are ready to build **this repository's**
+`samples/reference-firmware` project on GitHub-hosted Ubuntu runners:
 
-- `.github/workflows/ci.yml`: PR/workshop-branch checks and manual options.
+- `.github/workflows/ci.yml`: PR, `main`, and `workshop/**` branch checks,
+  plus manual options.
 - `.github/workflows/firmware-build.yml`: reusable build/test, optional quality
-  gates, optional SBOM, and checksummed firmware packaging.
+  gates, optional SBOM, and checksummed firmware packaging. Also runs the
+  workshop's Python regression checks.
 - `.github/workflows/release.yml`: validate a `workshop-vMAJOR.MINOR.PATCH` tag and
   publish that run's verified firmware package. Releases are marked prereleases.
 
-The optional modules are off by default. Customers must adapt tag patterns and
-review existing automation before use. Do not copy workflow files over existing
-customer files without review.
+After committing and pushing these files to your repository, open **Actions >
+Firmware CI > Run workflow** and select `main`. Leave both options off for the
+core demo, or independently enable `quality` (warnings, analysis, 80% line
+coverage, size budgets) and `sbom` (validated SPDX source inventory). No device
+or repository secrets are required; Actions must be enabled.
+
+A successful run provides `firmware-<commit SHA>` containing `monitor.elf`,
+`monitor.bin`, `monitor.map`, `manifest.json`, and `SHA256SUMS`, plus
+`sbom.spdx.json` when selected. The separate `diagnostics-<commit SHA>` artifact
+retains test and coverage reports, including available reports on failure.
+Selected gate failures prevent firmware upload and release publication.
+
+For the red-to-green demo, change only `EXPECTED_MIDPOINT_MC` in
+`samples/reference-firmware/tests/test_monitor.c` from `50000` to `50001` on an
+approved `workshop/**` branch, observe failed CI, then restore `50000`.
+For delivery, create and push a new `workshop-vMAJOR.MINOR.PATCH` tag on the
+desired commit. The release workflow rebuilds and checks that tagged source
+and publishes its same-run package as a prerelease, never flashing hardware.
+To select optional gates for a release, dispatch **Firmware release** against
+an existing matching tag; it will refuse to overwrite an existing release.
+Tag-push releases use the core checks with optional modules off.
+
+Customer-facing snippets still use `path/to/your/project`: their final caller
+and reusable-build templates are `examples/workflows/04-full-ci.yml` and
+`examples/workflows/04-full-build.yml`. They are embedded in the site instead of
+the repository-specific active workflows. Customers must adapt paths, toolchains
+and tag patterns and review existing automation before use. Do not copy workflow
+files over existing customer files without review.
 
 ## Static hosting
 

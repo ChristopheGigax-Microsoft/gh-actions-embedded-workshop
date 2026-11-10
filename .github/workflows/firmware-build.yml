@@ -1,5 +1,3 @@
-# REQUIRED: replace path/to/your/project with your repository-relative source path.
-# Adapt presets, include/source directories, output paths and tools to that project.
 name: Reusable firmware build
 on:
   workflow_call:
@@ -24,6 +22,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build gcc-13 python3-venv
+      - name: Check workshop and delivery contracts
+        run: python3 -m unittest discover -s tests -v
       - name: Install verified reference target compiler
         run: |
           python3 scripts/install_arm.py
@@ -31,28 +31,28 @@ jobs:
       - name: Native configure, build and test
         env:
           CC: gcc-13
-        # Adapt this CMake setup to your project; host tests require a host compiler.
         run: |
-          cmake --preset host -S path/to/your/project
+          cmake --preset host -S samples/reference-firmware
           cmake --build build/host
-          ctest --test-dir build/host --output-on-failure --output-junit test-results.xml
+          ctest --test-dir build/host --no-tests=error --output-on-failure --output-junit test-results.xml
       - name: Target firmware
-        # Adapt the Arm/CMake toolchain, SDK, CPU/ABI, startup, linker map and paths to your target project.
         run: |
-          cmake --preset arm -S path/to/your/project
+          cmake --preset arm -S samples/reference-firmware
           cmake --build build/arm
+          test -s build/arm/monitor.elf
+          test -s build/arm/monitor.bin
+          test -s build/arm/monitor.map
       - name: Optional quality gates
         if: inputs.quality
         env:
           CC: gcc-13
-        # Adapt host coverage and target size tools to the project's actual toolchains.
         run: |
           sudo apt-get install -y cppcheck gcovr
-          cmake --preset host-quality -S path/to/your/project
+          cmake --preset host-quality -S samples/reference-firmware
           cmake --build build/quality
-          ctest --test-dir build/quality --output-on-failure --output-junit test-results.xml
-          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I path/to/your/project/include path/to/your/project/src
-          gcovr --root . --filter path/to/your/project/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
+          ctest --test-dir build/quality --no-tests=error --output-on-failure --output-junit test-results.xml
+          cppcheck --enable=warning,style,performance,portability --error-exitcode=1 --inline-suppr --std=c11 -I samples/reference-firmware/include samples/reference-firmware/src
+          gcovr --root . --filter samples/reference-firmware/src/ --object-directory build/quality --gcov-executable gcov-13 --xml-pretty --output build/quality/coverage.xml --fail-under-line 80
           python3 scripts/check_size.py build/arm/monitor.elf --flash 16384 --ram 4096
       - name: Optional SBOM validator dependency
         if: inputs.sbom
@@ -64,9 +64,9 @@ jobs:
           SBOM: ${{ inputs.sbom }}
         run: |
           if [ "$SBOM" = "true" ]; then
-            .venv/bin/python scripts/package_firmware.py --sbom
+            .venv/bin/python scripts/package_firmware.py --source samples/reference-firmware --sbom
           else
-            python3 scripts/package_firmware.py
+            python3 scripts/package_firmware.py --source samples/reference-firmware
           fi
       - name: Retain diagnostic reports, including on failure
         if: always()
