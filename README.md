@@ -93,7 +93,22 @@ the repository-specific active workflows. Customers must adapt paths, toolchains
 and tag patterns and review existing automation before use. Do not copy workflow
 files over existing customer files without review.
 
-## Static hosting
+## MOAW edition (additional format)
+
+The complete English [MOAW workshop](moaw/workshop.md) is available alongside
+the original HTML edition in this same repository. It includes all seven labs,
+foldable solutions and reference appendices. The original `site`, `site.zip`,
+and examples are unchanged, and firmware build/release behaviour is preserved.
+
+See [MOAW maintenance, preview and publication](moaw/README.md) for local
+validation and direct hosting from this public repository; no new repository
+or copy is required. The MOAW metadata is set to `published: true` for publication.
+This is not access control: direct links to public content remain accessible.
+Catalogue listing is optional and separate. No MOAW deployment workflow is
+needed. Use the official short links rather than `moaw.dev`, whose retirement
+is announced for 2027.
+
+## Original static hosting
 
 Upload the **contents of `site`** to VibeHub manually. All assets and navigation
 are relative, and essential content works without JavaScript. No build step,
